@@ -20,8 +20,12 @@ static char s_outBuffer[1024 * 64];
 // we use the stream compression hooks.  this gunk makes it all go
 struct FStreamInStream
 {
-    SRes Read(void *p, void *buf, size_t *size)
+    SRes (*ReadPtr)(void *p, void *buf, size_t *size);
+
+    static SRes Read(void *p, void *buf, size_t *size)
     {
+        std::cout << "Read called with " << *size << " buffer" << std::endl;
+
         FStreamInStream * is = (FStreamInStream *) p;
         if (is->fileStream->eof()) {
             *size = 0;
@@ -29,6 +33,8 @@ struct FStreamInStream
             is->fileStream->read((char *) buf, *size);
             *size = is->fileStream->gcount();
         }
+        std::cout << "Read returns " << *size << " bytes" << std::endl;
+
         return SZ_OK;
     }
     std::ifstream * fileStream;
@@ -36,8 +42,12 @@ struct FStreamInStream
 
 struct FStreamOutStream
 {
-    size_t Write(void *p, const void *buf, size_t size)
+    size_t (*WritePtr)(void *p, const void *buf, size_t size);
+    
+    static size_t Write(void *p, const void *buf, size_t size)
     {
+        std::cout << "Write called with " << size << " bytes" << std::endl;
+
         FStreamOutStream * os = (FStreamOutStream *) p;
         if (os->fileStream->eof() || os->fileStream->fail()) {
             return -1;
@@ -82,6 +92,18 @@ doCompress(std::ifstream & inFile, std::ofstream & outFile)
     }
     
     // now let's do the compression!
+    FStreamOutStream os;
+    os.fileStream = &outFile;
+    os.WritePtr = &(FStreamOutStream::Write);
+    FStreamInStream is;
+    is.ReadPtr = &(FStreamInStream::Read);
+    is.fileStream = &inFile;
+
+    SRes r = LzmaEnc_Encode(hand, (ISeqOutStream *) &os,
+                            (ISeqInStream *) &is, NULL, &myAlloc, &myAlloc);
+
+/*    
+
     for (;;)
     {
         inFile.read((char *) s_inBuffer, sizeof(s_inBuffer));
@@ -92,7 +114,7 @@ doCompress(std::ifstream & inFile, std::ofstream & outFile)
         // XXX: run bytes through compression
         LzmaEnc_MemEncode(hand, (Byte *) s_outBuffer, &dstLen,
                           (Byte *) s_inBuffer, inFile.gcount(),
-                          0 /*(inFile.eof() ? 1 : 0) */, NULL,
+                          (inFile.eof() ? 1 : 0), NULL,
                           &myAlloc, &myAlloc);        
         std::cout << "writing: " << dstLen << " compressed bytes"
                   << std::endl;
@@ -106,7 +128,7 @@ doCompress(std::ifstream & inFile, std::ofstream & outFile)
             break;
         }
     }
-
+*/
     LzmaEnc_Destroy(hand, &myAlloc, &myAlloc);
 
     return 0;
@@ -225,13 +247,13 @@ main(int argc, char * argv[])
     outFile.open(argv[3], std::ios::binary | std::ios::trunc | std::ios::out);
 
     if (!inFile.is_open()) {
-        std::cerr << "couldn't open file for reading: " << argv[1]
+        std::cerr << "couldn't open file for reading: " << argv[2]
                   << std::endl;
         return 1;
     }
 
     if (!outFile.is_open()) {
-        std::cerr << "couldn't open file for writing: " << argv[2]
+        std::cerr << "couldn't open file for writing: " << argv[3]
                   << std::endl;
         return 1;
     }
