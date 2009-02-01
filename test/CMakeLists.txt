@@ -1,4 +1,5 @@
-SET (SRCS main.cpp)
+SET (SRCS main.cpp header.cpp)
+SET (HDRS header.h)
 
 # use the library we built
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/../src/dist/include)

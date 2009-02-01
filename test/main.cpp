@@ -3,6 +3,7 @@ extern "C" {
 #include "LzmaDec.h"
 };
 
+#include "header.h"
 #include <stdlib.h>
 
 // allocation routines
@@ -14,9 +15,6 @@ static ISzAlloc myAlloc = { SzAlloc, SzFree };
 #include <iostream>
 #include <fstream>
 
-static char s_inBuffer[1024 * 64];
-static char s_outBuffer[1024 * 64];
-
 // we use the stream compression hooks.  this gunk makes it all go
 struct FStreamInStream
 {
@@ -24,7 +22,7 @@ struct FStreamInStream
 
     static SRes Read(void *p, void *buf, size_t *size)
     {
-        std::cout << "Read called with " << *size << " buffer" << std::endl;
+//         std::cout << "Read called with " << *size << " buffer" << std::endl;
 
         FStreamInStream * is = (FStreamInStream *) p;
         if (is->fileStream->eof()) {
@@ -33,7 +31,7 @@ struct FStreamInStream
             is->fileStream->read((char *) buf, *size);
             *size = is->fileStream->gcount();
         }
-        std::cout << "Read returns " << *size << " bytes" << std::endl;
+//         std::cout << "Read returns " << *size << " bytes" << std::endl;
 
         return SZ_OK;
     }
@@ -46,7 +44,7 @@ struct FStreamOutStream
     
     static size_t Write(void *p, const void *buf, size_t size)
     {
-        std::cout << "Write called with " << size << " bytes" << std::endl;
+//         std::cout << "Write called with " << size << " bytes" << std::endl;
 
         FStreamOutStream * os = (FStreamOutStream *) p;
         if (os->fileStream->eof() || os->fileStream->fail()) {
@@ -84,11 +82,16 @@ doCompress(std::ifstream & inFile, std::ofstream & outFile)
     // properties!  write them as the first 5 bytes of the stream
     {
         SizeT s = LZMA_PROPS_SIZE;
-        Byte props[LZMA_PROPS_SIZE];
-        LzmaEnc_WriteProperties(hand, props, &s);
-        std::cout << "wrote props to byte stream: "
-                  << s << " bytes" << std::endl;
-        outFile.write((char *) props, LZMA_PROPS_SIZE);
+        unsigned char hdr[MY_LZMA_HEADER_SIZE];
+        my_lzma_header h;
+        initLzmaHeader(&h);
+        h.pb = props.pb;
+        h.lp = props.lp;
+        h.lc = props.lc;        
+        h.isStreamed = 1;
+        h.dictSize = props.dictSize;
+        serializeLzmaHeader(hdr, &h);
+        outFile.write((char *) hdr, MY_LZMA_HEADER_SIZE);
     }
     
     // now let's do the compression!
@@ -110,6 +113,11 @@ doCompress(std::ifstream & inFile, std::ofstream & outFile)
 static int
 doUncompress(std::ifstream & inFile, std::ofstream & outFile)
 {
+    char inBuffer[1024 * 64];
+    char outBuffer[1024 * 64];
+
+
+
     // return codes from lzma library
     SRes r;
 
@@ -118,39 +126,43 @@ doUncompress(std::ifstream & inFile, std::ofstream & outFile)
     memset(&dec, 0, sizeof(dec));
     LzmaDec_Init(&dec);
 
-    // decode the properties, these are encoded into the first LZMA_PROPS_SIZE
-    // bytes of the input stream
+    // decode the properties, these are encoded into the first
+    // LZMA_HEADER_SIZE bytes of the input stream (13 bytes)
+    // then smash this information into the 5 byte buffer that the
+    // lzma interface wants.  rather silly.
     {
-        Byte propsBuf[LZMA_PROPS_SIZE];
-        inFile.read((char *) propsBuf, LZMA_PROPS_SIZE);
-        if (inFile.gcount() != LZMA_PROPS_SIZE) {
-            std::cerr << "couldn't read lzma stream properties!" << std::endl;
+        unsigned char hdr[MY_LZMA_HEADER_SIZE];
+        my_lzma_header h;
+        initLzmaHeader(&h);        
+
+        inFile.read((char *) hdr, MY_LZMA_HEADER_SIZE);
+        if (inFile.gcount() != MY_LZMA_HEADER_SIZE) {
+            std::cerr << "couldn't read lzma header!" << std::endl;
             return 1;
         }
-        CLzmaProps props;
-        r = LzmaProps_Decode(&props, propsBuf, LZMA_PROPS_SIZE);        
-        
-        if (r != SZ_OK) {
-            std::cerr << "couldn't parse lzma stream properties!" << std::endl;
+
+        if (!parseLzmaHeader(hdr, &h)) {
+            std::cerr << "couldn't parse lzma header!"
+                      << std::endl;
             return 1;
         }
         
         // now we're ready to allocate the decoder
-        LzmaDec_Allocate(&dec, propsBuf, LZMA_PROPS_SIZE, &myAlloc);
+        LzmaDec_Allocate(&dec, hdr, MY_LZMA_HEADER_SIZE, &myAlloc);
     }
     
     // now let's do the decompression!
     for (;;)
     {
-        inFile.read((char *) s_inBuffer, sizeof(s_inBuffer));
+        inFile.read((char *) inBuffer, sizeof(inBuffer));
 
-        size_t dstLen = sizeof(s_outBuffer);
+        size_t dstLen = sizeof(outBuffer);
         size_t srcLen = inFile.gcount();
         size_t amt = inFile.gcount();
         size_t bufOff = 0;
 
-        std::cout << "read: " << srcLen << " compressed bytes"
-                  << std::endl;
+//         std::cout << "read: " << srcLen << " compressed bytes"
+//                   << std::endl;
 
         // because we're _decompressing_ here, likely a single read buffer
         // of compressed bytes will translate into multiple buffers of
@@ -158,13 +170,13 @@ doUncompress(std::ifstream & inFile, std::ofstream & outFile)
         ELzmaStatus stat = LZMA_STATUS_NOT_SPECIFIED;
 
         while (bufOff < srcLen) {
-            r = LzmaDec_DecodeToBuf(&dec, (Byte *) s_outBuffer, &dstLen,
-                                    ((Byte *) s_inBuffer + bufOff), &amt,
+            r = LzmaDec_DecodeToBuf(&dec, (Byte *) outBuffer, &dstLen,
+                                    ((Byte *) inBuffer + bufOff), &amt,
                                     LZMA_FINISH_ANY, &stat);
 
             // now write what we've decoded
-            std::cout << "finished decode of " << amt << " bytes into "
-                      << dstLen << std::endl;
+//             std::cout << "finished decode of " << amt << " bytes into "
+//                       << dstLen << std::endl;
 
             if (r != SZ_OK) {
                 std::cerr << "decode error" << std::endl;
@@ -172,9 +184,9 @@ doUncompress(std::ifstream & inFile, std::ofstream & outFile)
             }
             
             // write what we've read
-            std::cout << "writing: " << dstLen << " uncompressed bytes"
-                      << std::endl;
-            outFile.write(s_outBuffer, dstLen);
+//             std::cout << "writing: " << dstLen << " uncompressed bytes"
+//                       << std::endl;
+            outFile.write(outBuffer, dstLen);
             if (outFile.fail()) {
                 std::cerr << "error writing!" << std::endl;
                 goto decompressEnd;
@@ -186,7 +198,7 @@ doUncompress(std::ifstream & inFile, std::ofstream & outFile)
             if (bufOff >= srcLen) break;
             amt = srcLen - bufOff;
 
-            std::cout << amt << " bytes left" << std::endl;
+//             std::cout << amt << " bytes left" << std::endl;
         }
 
         if (inFile.eof()) break;
