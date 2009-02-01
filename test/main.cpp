@@ -102,33 +102,6 @@ doCompress(std::ifstream & inFile, std::ofstream & outFile)
     SRes r = LzmaEnc_Encode(hand, (ISeqOutStream *) &os,
                             (ISeqInStream *) &is, NULL, &myAlloc, &myAlloc);
 
-/*    
-
-    for (;;)
-    {
-        inFile.read((char *) s_inBuffer, sizeof(s_inBuffer));
-        std::cout << "read: " << inFile.gcount() << " uncompressed bytes"
-                  << std::endl;
-
-        size_t dstLen = sizeof(s_outBuffer);
-        // XXX: run bytes through compression
-        LzmaEnc_MemEncode(hand, (Byte *) s_outBuffer, &dstLen,
-                          (Byte *) s_inBuffer, inFile.gcount(),
-                          (inFile.eof() ? 1 : 0), NULL,
-                          &myAlloc, &myAlloc);        
-        std::cout << "writing: " << dstLen << " compressed bytes"
-                  << std::endl;
-
-        outFile.write(s_outBuffer, dstLen);
-
-        if (inFile.eof()) break;
-
-        if (inFile.fail()) {
-            std::cerr << "read failure" << std::endl;
-            break;
-        }
-    }
-*/
     LzmaEnc_Destroy(hand, &myAlloc, &myAlloc);
 
     return 0;
@@ -265,7 +238,6 @@ main(int argc, char * argv[])
     } else if (argv[1][0] == 'x') {
         rv = doUncompress(inFile, outFile);        
     }
-    
 
     inFile.close();
     outFile.close();    
