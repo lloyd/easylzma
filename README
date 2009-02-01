@@ -1,5 +1,25 @@
-Welcome!
+(this project is just getting started.  nothing to see here.  move along)
 
-note, this project is just getting started.  nothing to see here.  move along.
+License
 
-XXX: write me
+All the cruft you find here is public domain.  You don't have to credit
+anyone to use this gunk, but my personal request is that you mention
+Igor Pavlov for his hard, high quality work.
+
+Project Goals
+
+1. A tiny C wrapper around a subset of Igor Pavlov's public domain
+   LZMA compression and decompression implementation.
+2. A tiny and straighforward API
+3. Encapsulate file header format in a manner that is forward compatible
+   with better emergent standards
+   (http://tukaani.org/lzma/header-format-12.txt)   
+4. straight C command line utilites for the creation and extraction of lzma
+   files that are compatible with the venerable LZMA utils library
+   (http://tukaani.org/lzma/)
+5. easy to build and use everywhere (doze and nix alike)
+6. public domain licensing through and through.  (hats off to Igor)
+
+XXX: write me (and the code)
+
+lloyd - sometime in oh nine.
