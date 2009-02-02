@@ -23,7 +23,6 @@ static int
 openFiles(const char * ifname, FILE ** inFile, const char * ofname,
           FILE ** outFile, int overwrite)
 {
-    printf("opening '%s'\n", ifname);
     *inFile = fopen(ifname, "rb");
     if (*inFile == NULL) {
         fprintf(stderr, "couldn't open '%s' for reading\n", ifname);
@@ -129,7 +128,6 @@ static size_t elzmaWriteFunc(void *ctx, const void *buf, size_t size)
     assert(f != NULL);
 
     wt = fwrite(buf, 1, size, f);
-    printf("wrote %lu bytes\n", wt);
     
     return wt;
 }
@@ -140,7 +138,7 @@ static int elzmaReadFunc(void *ctx, void *buf, size_t *size)
     FILE * f = (FILE *) ctx;
     assert(f != NULL);
     *size = fread(buf, 1, *size, f);
-    printf("read %lu bytes\n", *size);
+
     return 0;
 }
 
@@ -321,8 +319,6 @@ doDecompress(int argc, char ** argv)
     }
 
     /* generate output file name */
-    printf("compare: %s\n", ext);
-    printf("to: %s\n", ifname + strlen(ifname) - strlen(ext));    
     if (strlen(ifname) < strlen(ext) ||
         0 != strcmp(ext, ifname + strlen(ifname) - strlen(ext)))
     {
