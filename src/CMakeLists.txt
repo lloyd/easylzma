@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
-FILE(GLOB SRCS pavel/*.c)
-FILE(GLOB HDRS pavel/*.h)
+FILE(GLOB SRCS pavlov/*.c)
+FILE(GLOB HDRS pavlov/*.h)
 SET(PUB_HDRS LzmaLib.h Types.h LzmaDec.h LzmaEnc.h)
 
 # set up some paths for outputing the usable binaries
@@ -20,7 +20,7 @@ ADD_LIBRARY(easylzma_s STATIC ${SRCS} ${HDRS})
 ### copy the two required headers into our output dir as a post build step
 # copy public headers to output directory
 FOREACH (header ${PUB_HDRS})
-  SET (header ${CMAKE_CURRENT_SOURCE_DIR}/pavel/${header})
+  SET (header ${CMAKE_CURRENT_SOURCE_DIR}/pavlov/${header})
   ADD_CUSTOM_COMMAND(TARGET easylzma_s POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${header} ${incDir})
 ENDFOREACH (header ${PUB_HDRS})

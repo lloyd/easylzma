@@ -1,7 +1,7 @@
 #ifndef __MY_LZMA_HEADER__
 #define __MY_LZMA_HEADER__
 
-// header format gleaned from reading pavel's code
+// header format gleaned from reading Igor's code
 
 #define MY_LZMA_HEADER_SIZE 13
 #define MY_LZMA_PROPSBUF_SIZE 5
