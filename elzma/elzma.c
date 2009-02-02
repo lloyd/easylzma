@@ -11,26 +11,54 @@
  */
 
 #include "easylzma/compress.h"
+#include "easylzma/decompress.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
-#define ELZMA_USAGE \
-"Compress files using the LZMA algorithm (by default, in place).\n"\
+/* a utility to open a pair of files */
+/* XXX: respect overwrite flag */
+static int
+openFiles(const char * ifname, FILE ** inFile, const char * ofname,
+          FILE ** outFile, int overwrite)
+{
+    printf("opening '%s'\n", ifname);
+    *inFile = fopen(ifname, "rb");
+    if (*inFile == NULL) {
+        fprintf(stderr, "couldn't open '%s' for reading\n", ifname);
+        return 1;
+    }
+    
+    *outFile = fopen(ofname, "wb");
+    if (*outFile == NULL) {
+        fprintf(stderr, "couldn't open '%s' for writing\n", ofname);
+        return 1;
+    }
+    
+    return 0;
+}
+
+#define ELZMA_COMPRESS_USAGE \
+"Compress files using the LZMA algorithm (in place by default).\n"\
 "\n"\
 "Usage: elzma [options] [file]\n"\
-"  -1 .. -9       compression level, -1 is fast, -9 is best\n"\
-"  -h, --help     output this message and exit\n"\
-"  -v, --verbose  output verbose status information while compressing\n"\
+"  -1 .. -9         compression level, -1 is fast, -9 is best\n"\
+"  -f, --force      overwrite output files if they exist\n"\
+"  -h, --help       output this message and exit\n"\
+"  -k, --keep       don't delete input files\n"\
+"  -v, --verbose    output verbose status information while compressing\n"\
+"  -z, --compress   compress files (default when invoking elzma program)\n"\
+"  -d, --decompress decompress files (default when invoking unelzma program)\n"\
 "\n"\
 "Advanced Options:\n"\
-"  -s --set-dict   (advanced) specify LZMA dictionary size in bytes\n"
+"  -s --set-dict    (advanced) specify LZMA dictionary size in bytes\n"
 
 /* parse arguments populating output parameters, return nonzero on failure */
-static int parseArgs(int argc, char ** argv, unsigned char * level,
-                     char ** fname, unsigned int * dictSize,
-                     unsigned int * verbose)
+static int parseCompressArgs(int argc, char ** argv, unsigned char * level,
+                             char ** fname, unsigned int * dictSize,
+                             unsigned int * verbose, unsigned int * keep,
+                             unsigned int * overwrite)
 {
     unsigned int i;
     
@@ -62,6 +90,14 @@ static int parseArgs(int argc, char ** argv, unsigned char * level,
             else if (!strcmp(arg, "v") || !strcmp(arg, "verbose"))
             {
                 *verbose = 1;
+            }
+            else if (!strcmp(arg, "f") || !strcmp(arg, "force"))
+            {
+                *overwrite = 1;
+            }
+            else if (!strcmp(arg, "k") || !strcmp(arg, "keep"))
+            {
+                *keep = 1;
             }
             else if (strlen(arg) == 1 && arg[0] >= '1' && arg[0] <= '9')
             {
@@ -108,8 +144,8 @@ static int elzmaReadFunc(void *ctx, void *buf, size_t *size)
     return 0;
 }
 
-int
-main(int argc, char ** argv)
+static int
+doCompress(int argc, char ** argv)
 {
     /* default compression parameters, some of which may be overridded by
      * command line arguments */
@@ -128,10 +164,13 @@ main(int argc, char ** argv)
     elzma_compress_handle hand = NULL;
     /* XXX: large file support */
     unsigned int uncompressedSize = 0;
+    unsigned int keep = 0;
+    unsigned int overwrite = 0;
 
-    if (0 != parseArgs(argc, argv, &level, &ifname, &dictSize, &verbose))
+    if (0 != parseCompressArgs(argc, argv, &level, &ifname,
+                               &dictSize, &verbose, &keep, &overwrite))
     {
-        fprintf(stderr, ELZMA_USAGE);
+        fprintf(stderr, ELZMA_COMPRESS_USAGE);
         return 1;
     }
 
@@ -147,29 +186,18 @@ main(int argc, char ** argv)
     
     /* now attempt to open input and ouput files */
     /* XXX: stdin/stdout support */
+    if (0 != openFiles(ifname, &inFile, ofname, &outFile, overwrite)) {
+        return 1;
+    }
+    
+    /* set uncompressed size */
+    if (0 != fseek(inFile, 0, SEEK_END) ||
+        0 == (uncompressedSize = ftell(inFile)) ||
+        0 != fseek(inFile, 0, SEEK_SET))
     {
-        printf("opening '%s'\n", ifname);
-        inFile = fopen(ifname, "rb");
-        if (inFile == NULL) {
-            fprintf(stderr, "couldn't open '%s' for reading\n", ifname);
-            return 1;
-        }
-        
-        /* set uncompressed size */
-        if (0 != fseek(inFile, 0, SEEK_END) ||
-            0 == (uncompressedSize = ftell(inFile)) ||
-            0 != fseek(inFile, 0, SEEK_SET))
-        {
-            fprintf(stderr, "error seeking input file (%s) - zero length?\n",
-                    ifname);
-            return 1;
-        }
-        
-        outFile = fopen(ofname, "wb");
-        if (outFile == NULL) {
-            fprintf(stderr, "couldn't open '%s' for writing\n", ofname);
-            return 1;
-        }
+        fprintf(stderr, "error seeking input file (%s) - zero length?\n",
+                ifname);
+        return 1;
     }
 
     if (verbose) {
@@ -210,4 +238,170 @@ main(int argc, char ** argv)
     free(ofname);
 
     return 0;
+}
+
+#define ELZMA_DECOMPRESS_USAGE \
+"Decompress files compressed using the LZMA algorithm (in place by default).\n"\
+"\n"\
+"Usage: unelzma [options] [file]\n"\
+"  -f, --force      overwrite output files if they exist\n"\
+"  -h, --help       output this message and exit\n"\
+"  -k, --keep       don't delete input files\n"\
+"  -v, --verbose    output verbose status information while decompressing\n"\
+"  -z, --compress   compress files (default when invoking elzma program)\n"\
+"  -d, --decompress decompress files (default when invoking unelzma program)\n"\
+"\n"
+/* parse arguments populating output parameters, return nonzero on failure */
+static int parseDecompressArgs(int argc, char ** argv, char ** fname,
+                               unsigned int * verbose, unsigned int * keep,
+                               unsigned int * overwrite)
+{
+    unsigned int i;
+    
+    if (argc < 2) return 1;
+
+    for (i = 1; i < argc; i++) {
+        if (argv[i][0] == '-') {
+            char * arg = &(argv[i][1]);
+            if (arg[0] == '-') arg++;
+
+            /* now see what argument this is */
+            if (!strcmp(arg, "h") || !strcmp(arg, "help"))
+            {
+                return 1;
+            }
+            else if (!strcmp(arg, "v") || !strcmp(arg, "verbose"))
+            {
+                *verbose = 1;
+            }
+            else if (!strcmp(arg, "k") || !strcmp(arg, "keep"))
+            {
+                *keep = 1;
+            }
+            else if (!strcmp(arg, "f") || !strcmp(arg, "force"))
+            {
+                *overwrite = 1;
+            }
+            else
+            {
+                return 1;
+            }
+        }
+        else 
+        {
+            *fname = argv[i];
+            break;
+        }
+    }
+
+    /* proper number of arguments? */
+    if (i != argc - 1 || *fname == NULL) return 1;
+    
+    return 0;
+}
+
+static int
+doDecompress(int argc, char ** argv)
+{
+    char * ext = ".lzma";
+    char * ifname = NULL;
+    char * ofname = NULL;
+    unsigned int verbose = 0;
+    FILE * inFile = NULL;
+    FILE * outFile = NULL;
+    elzma_decompress_handle hand = NULL;
+    unsigned int overwrite = 0;
+    unsigned int keep = 0;
+
+    if (0 != parseDecompressArgs(argc, argv, &ifname, &verbose,
+                                 &keep, &overwrite))
+    {
+        fprintf(stderr, ELZMA_DECOMPRESS_USAGE);
+        return 1;
+    }
+
+    /* generate output file name */
+    printf("compare: %s\n", ext);
+    printf("to: %s\n", ifname + strlen(ifname) - strlen(ext));    
+    if (strlen(ifname) < strlen(ext) ||
+        0 != strcmp(ext, ifname + strlen(ifname) - strlen(ext)))
+    {
+        /* XXX add 7zip support */
+        fprintf(stderr, "input file missing required %s extension\n", ext);
+        return 1;
+    }
+
+    ofname = malloc(strlen(ifname) - strlen(".lzma"));
+    ofname[0] = 0;
+    strncat(ofname, ifname, strlen(ifname) - strlen(".lzma"));
+
+    /* now attempt to open input and ouput files */
+    /* XXX: stdin/stdout support */
+    if (0 != openFiles(ifname, &inFile, ofname, &outFile, overwrite)) {
+        return 1;
+    }
+
+    hand = elzma_decompress_alloc();
+    if (hand == NULL) {
+        fprintf(stderr, "couldn't allocate decompression object\n");
+        return 1;
+    }
+
+    if (ELZMA_E_OK != elzma_decompress_run(
+            hand, elzmaReadFunc, (void *) inFile,
+            elzmaWriteFunc, (void *) outFile))
+    {
+        fprintf(stderr, "error decompressing\n");
+        return 1;
+    }
+
+    elzma_decompress_free(&hand);    
+
+    return 1;
+}
+
+int
+main(int argc, char ** argv)
+{
+    enum { RM_NONE, RM_COMPRESS, RM_DECOMPRESS } runmode = RM_NONE;
+    
+    /* first we'll determine the mode we're running in, indicated by
+     * the binary name (argv[0]) or by the presence of a flag:
+     * one of -z, -d, -compress, --decompress */
+    if (strlen(argv[0]) >= strlen("unelzma") &&
+        !strcmp((argv[0] + strlen(argv[0]) - strlen("unelzma")), "unelzma"))
+    {
+        runmode = RM_DECOMPRESS;
+    } else if (strlen(argv[0]) >= strlen("elzma") &&
+               !strcmp((argv[0] + strlen(argv[0]) - strlen("elzma")), "elzma"))
+    {
+        runmode = RM_COMPRESS;
+    }
+
+    /* allow runmode to be overridded by a command line flag, first flag
+     * wins */
+    {
+        unsigned int i;
+        for (i = 1; i < argc; i++) {
+            if (!strcmp(argv[i], "-d") || !strcmp(argv[i], "--decompress")) {
+                runmode = RM_DECOMPRESS;
+                break;
+            }
+            else if (!strcmp(argv[i], "-z") || !strcmp(argv[i], "--compress"))
+            {
+                runmode = RM_COMPRESS;
+                break;
+            }
+        }
+    }
+
+    if (runmode != RM_COMPRESS && runmode != RM_DECOMPRESS)
+    {
+        fprintf(stderr, "couldn't determine whether "
+                "you want to compress or decompress\n");
+        return 1;
+    }
+
+    if (runmode == RM_COMPRESS) return doCompress(argc, argv);
+    return doDecompress(argc, argv);
 }

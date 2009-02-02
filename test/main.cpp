@@ -116,8 +116,6 @@ doUncompress(std::ifstream & inFile, std::ofstream & outFile)
     char inBuffer[1024 * 64];
     char outBuffer[1024 * 64];
 
-
-
     // return codes from lzma library
     SRes r;
 
@@ -126,31 +124,6 @@ doUncompress(std::ifstream & inFile, std::ofstream & outFile)
     memset(&dec, 0, sizeof(dec));
     LzmaDec_Init(&dec);
 
-    // decode the properties, these are encoded into the first
-    // LZMA_HEADER_SIZE bytes of the input stream (13 bytes)
-    // then smash this information into the 5 byte buffer that the
-    // lzma interface wants.  rather silly.
-    {
-        unsigned char hdr[MY_LZMA_HEADER_SIZE];
-        my_lzma_header h;
-        initLzmaHeader(&h);        
-
-        inFile.read((char *) hdr, MY_LZMA_HEADER_SIZE);
-        if (inFile.gcount() != MY_LZMA_HEADER_SIZE) {
-            std::cerr << "couldn't read lzma header!" << std::endl;
-            return 1;
-        }
-
-        if (!parseLzmaHeader(hdr, &h)) {
-            std::cerr << "couldn't parse lzma header!"
-                      << std::endl;
-            return 1;
-        }
-        
-        // now we're ready to allocate the decoder
-        LzmaDec_Allocate(&dec, hdr, MY_LZMA_HEADER_SIZE, &myAlloc);
-    }
-    
     // now let's do the decompression!
     for (;;)
     {

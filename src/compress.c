@@ -1,33 +1,18 @@
 #include "easylzma/compress.h"
 #include "lzma_header.h"
+#include "common_internal.h"
 
 #include "pavlov/Types.h"
 #include "pavlov/LzmaEnc.h"
 
 #include <string.h>
 
-/* allocation routines - XXX support client overrides */
-static void *elzmaAlloc(void *p, size_t size) {
-    p = p;
-    return malloc(size);
-}
-
-static void elzmaFree(void *p, void *address) {
-    p = p;
-    if (address != NULL) {
-        free(address);
-    }
-}
-
-static ISzAlloc elzmaAllocStruct = {
-    elzmaAlloc, elzmaFree
-};
-
 struct _elzma_compress_handle {
     CLzmaEncProps props;
     CLzmaEncHandle encHand;
     unsigned long long uncompressedSize;
     elzma_file_format format;
+    struct elzma_alloc_struct allocStruct;
 };
 
 elzma_compress_handle
@@ -51,7 +36,7 @@ elzma_compress_alloc()
     hand->props.numThreads = 1;
     hand->props.writeEndMark = 1;
 
-    hand->encHand = LzmaEnc_Create(&elzmaAllocStruct);
+    init_alloc_struct(&(hand->allocStruct), NULL, NULL, NULL, NULL);
 
     return hand;
 }
@@ -62,7 +47,8 @@ elzma_compress_free(elzma_compress_handle * hand)
     if (hand && *hand) {
         if ((*hand)->encHand) {
             LzmaEnc_Destroy((*hand)->encHand,
-                            &elzmaAllocStruct, &elzmaAllocStruct);
+                            (ISzAlloc *) &((*hand)->allocStruct),
+                            (ISzAlloc *) &((*hand)->allocStruct));
         }
         
     }
@@ -117,6 +103,18 @@ static size_t elzmaWriteFunc(void *p, const void *buf, size_t size)
     return os->outputStream(os->outputContext, buf, size);
 }
 
+void elzma_compress_set_allocation_callbacks(
+    elzma_compress_handle hand,
+    elzma_malloc mallocFunc, void * mallocFuncContext,
+    elzma_free freeFunc, void * freeFuncContext)
+{
+    if (hand) {
+        init_alloc_struct(&(hand->allocStruct),
+                          mallocFunc, mallocFuncContext,
+                          freeFunc, freeFuncContext);
+    }
+}
+
 int
 elzma_compress_run(elzma_compress_handle hand,
                    elzma_read_callback inputStream, void * inputContext,
@@ -135,6 +133,13 @@ elzma_compress_run(elzma_compress_handle hand,
     outStreamStruct.WritePtr = elzmaWriteFunc;
     outStreamStruct.outputStream = outputStream;    
     outStreamStruct.outputContext = outputContext;    
+
+    /* create an encoding object */
+    hand->encHand = LzmaEnc_Create((ISzAlloc *) &(hand->allocStruct));
+
+    if (hand->encHand == NULL) {
+        return ELZMA_E_COMPRESS_ERROR;
+    }
 
     /* inintialize with compression parameters */
     if (SZ_OK != LzmaEnc_SetProps(hand->encHand, &(hand->props)))
@@ -175,7 +180,8 @@ elzma_compress_run(elzma_compress_handle hand,
     SRes r = LzmaEnc_Encode(hand->encHand,
                             (ISeqOutStream *) &outStreamStruct,
                             (ISeqInStream *) &inStreamStruct, NULL,
-                            &elzmaAllocStruct, &elzmaAllocStruct);
+                            (ISzAlloc *) &(hand->allocStruct),
+                            (ISzAlloc *) &(hand->allocStruct));
 
     /* XXX: support a footer! (lzip) */
 
