@@ -3,23 +3,71 @@
 License
 
 All the cruft you find here is public domain.  You don't have to credit
-anyone to use this gunk, but my personal request is that you mention
+anyone to use this code, but my personal request is that you mention
 Igor Pavlov for his hard, high quality work.
 
 Project Goals
 
-1. A tiny C wrapper around a subset of Igor Pavlov's public domain
-   LZMA compression and decompression implementation.
+1. A tiny C wrapper and portable build system around a subset of
+   Igor Pavlov's public domain LZMA compression and decompression
+   implementation.
 2. A tiny and straighforward API
-3. Encapsulate file header format in a manner that is forward compatible
-   with better emergent standards
-   (http://tukaani.org/lzma/header-format-12.txt)   
-4. straight C command line utilites for the creation and extraction of lzma
-   files that are compatible with the venerable LZMA utils library
-   (http://tukaani.org/lzma/)
-5. easy to build and use everywhere (doze and nix alike)
-6. public domain licensing through and through.  (hats off to Igor)
+3. Support for multiple different prominent LZMA file formats (see section on
+   file formats below)
+4. easy to build and use everywhere (doze and nix alike)
+5. public domain licensing through and through.  (hats off to Igor)
+
+Features
 
 XXX: write me (and the code)
+
+Usage
+
+XXX: write me (and the code)
+
+The Saga of LZMA File Formats, and a couple cents.
+
+As far as I can tell, there are at least four different ways to put LZMA
+compressed data in a stream:
+
+1. The LZMA-Alone format, which consists of a 13 byte header including
+   compression properties, dictionary size, and the uncompressed size of
+   the file, followed by compressed data.  This format has some support
+   in Igor Pavlov's reference implementation and is in widespread use, as
+   it's supported by lzmautils: http://tukaani.org/lzma/
+
+   The canonical (afaict) implementation of this format (lzmautis) is
+   BSD licensed.
+
+2. The lzip format (http://www.nongnu.org/lzip/lzip.html) - which
+   includes a CRC footer and leading "magic number".  The former
+   affords data integrity gaurantees, while the latter simplifies
+   heuristic determination of file format.  This format looks to have
+   reasonably widespread usage, though not quite as significant as
+   LZMA-Alone.
+
+   The only implementation of this format I can find (lzip) is GPL licensed.
+
+3. the xz format (http://tukaani.org/lzma/header-format-12.txt) which is
+   a more complex representation that includes CRC support and a magic
+   number.  This format is proposed by lzmautils project and does not, at 
+   the time of writing, have any implementations.
+
+4. The 7zip disk format which can contain multiple files possibly stored in
+   LZMA compressed format.
+
+This multitude of formats is not "easy", so this is the work of "easylzma".
+The only reasonable path forward seems to be a library supporting reading
+of multiple file formats, and by default writes a well thought out format that 
+includes both magic numbers and CRC redundancy checks, but includes legacy
+support of writing the most popular formats.  Undecided here.
+
+These various proposals are trivially, but importantly, different.  I 
+think convergence on a single reasonable format should be our goal, so that
+we can stop talking about it and start using lzma for it's exceptional
+compression characteristics.
+
+My personal bias is to throw support to something liberally licensed, cause'
+I like to use good code in personal and professional projects alike...  
 
 lloyd - sometime in oh nine.
