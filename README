@@ -1,4 +1,8 @@
-(this project is just getting started.  nothing to see here.  move along)
+Overview
+
+Easylzma is a C library and command line tools for LZMA compression and 
+decompression.  It uses a Igor Pavlov's reference implementation and SDK
+written in C.
 
 License
 
@@ -16,6 +20,13 @@ Project Goals
    file formats below)
 4. easy to build and use everywhere (doze and nix alike)
 5. public domain licensing through and through.  (hats off to Igor)
+
+Current State:
+
+THIS IS A WORK IN PROGRESS.  The code here should be considered pre-alpha,
+and this should only be used by tinkerers or hackers at this point.  Once
+feature completion is attained this message will be updated.  See the
+TODO file distributed with the source for remaining work to be done.
 
 Features
 

@@ -1,8 +1,30 @@
-cmake_minimum_required(VERSION 2.6)
+# Copyright 2009, Lloyd Hilaiel.
+#
+# License
+# 
+# All the cruft you find here is public domain.  You don't have to credit
+# anyone to use this code, but my personal request is that you mention
+# Igor Pavlov for his hard, high quality work.
+#
+
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+
+PROJECT(easylzma)
+
+SET (EASYLZMA_MAJOR 0)
+SET (EASYLZMA_MINOR 0)
+SET (EASYLZMA_MICRO 1)
+
+SET (EASYLZMA_DIST_NAME
+     "easylzma-${EASYLZMA_MAJOR}.${EASYLZMA_MINOR}.${EASYLZMA_MICRO}")
 
 IF (NOT CMAKE_BUILD_TYPE)
-  SET(CMAKE_BUILD_TYPE "Debug")
+  SET(CMAKE_BUILD_TYPE "Release")
 ENDIF (NOT CMAKE_BUILD_TYPE)
+
+IF (${CMAKE_BUILD_TYPE} STREQUAL "Release")
+  MESSAGE("** for a debug build: cmake -DCMAKE_BUILD_TYPE=Debug ..")
+ENDIF (${CMAKE_BUILD_TYPE} STREQUAL "Release")
 
 SET(CMAKE_C_FLAGS "-Wall")
 IF (WIN32) 

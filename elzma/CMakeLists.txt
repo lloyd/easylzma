@@ -1,16 +1,36 @@
+# Copyright 2009, Lloyd Hilaiel.
+#
+# License
+# 
+# All the cruft you find here is public domain.  You don't have to credit
+# anyone to use this code, but my personal request is that you mention
+# Igor Pavlov for his hard, high quality work.
+#
+
+# set up some paths
+SET (binDir ${CMAKE_CURRENT_BINARY_DIR}/../${EASYLZMA_DIST_NAME}/bin)
+
+# create some directories
+FILE(MAKE_DIRECTORY ${binDir})
+
 SET (SRCS elzma.c)
 SET (HDRS )
 
 # use the library we built
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/../src/dist/include)
-LINK_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/../src/dist/lib)
+INCLUDE_DIRECTORIES(
+    ${CMAKE_CURRENT_BINARY_DIR}/../${EASYLZMA_DIST_NAME}/include
+)
+LINK_DIRECTORIES(
+    ${CMAKE_CURRENT_BINARY_DIR}/../${EASYLZMA_DIST_NAME}/lib
+)
 
 ADD_EXECUTABLE(elzma ${SRCS})
 
 TARGET_LINK_LIBRARIES(elzma easylzma_s)
 
 # make a hard link (or copy) from unelzma to elzma
-# XXX port me to doze
+GET_TARGET_PROPERTY(binPath elzma LOCATION)
 ADD_CUSTOM_COMMAND(TARGET elzma POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${binPath} ${binDir}
       COMMAND ln -f elzma unelzma
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})    
+      WORKING_DIRECTORY ${binDir})    

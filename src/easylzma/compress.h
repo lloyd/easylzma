@@ -1,3 +1,15 @@
+/*
+ * Copyright 2009, Lloyd Hilaiel.
+ *
+ * License
+ * 
+ * All the cruft you find here is public domain.  You don't have to credit
+ * anyone to use this code, but my personal request is that you mention
+ * Igor Pavlov for his hard, high quality work.
+ *
+ * easylzma/compress.h - the API for LZMA compression using easylzma
+ */
+
 #ifndef __EASYLZMACOMPRESS_H__ 
 #define __EASYLZMACOMPRESS_H__ 
 

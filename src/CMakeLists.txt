@@ -1,30 +1,41 @@
-cmake_minimum_required(VERSION 2.6)
+# Copyright 2009, Lloyd Hilaiel.
+#
+# License
+# 
+# All the cruft you find here is public domain.  You don't have to credit
+# anyone to use this code, but my personal request is that you mention
+# Igor Pavlov for his hard, high quality work.
+#
 
 FILE(GLOB SRCS pavlov/*.c *.c)
 FILE(GLOB HDRS *.h pavlov/*.h easylzma/*.h)
 FILE(GLOB PUB_HDRS easylzma/*.h)
 
-# (XXX temporarily include Igor's headers in output dir)
-FILE(GLOB TMP_HDRS
-     pavlov/LzmaLib.h pavlov/Types.h pavlov/LzmaDec.h pavlov/LzmaEnc.h)
-SET(PUB_HDRS ${PUB_HDRS} ${TMP_HDRS})
-
 # set up some paths for outputing the usable binaries
-SET (libDir ${CMAKE_CURRENT_BINARY_DIR}/dist/lib)
-SET (incDir ${CMAKE_CURRENT_BINARY_DIR}/dist/include/easylzma)
+SET (libDir
+     ${CMAKE_CURRENT_BINARY_DIR}/../${EASYLZMA_DIST_NAME}/lib)
+SET (incDir
+     ${CMAKE_CURRENT_BINARY_DIR}/../${EASYLZMA_DIST_NAME}/include/easylzma)
 
 # an include directory to allow easylzma implementation to find public
 # headers
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 
-# create these output directories
-FILE(MAKE_DIRECTORY ${libDir})
-FILE(MAKE_DIRECTORY ${incDir})
-
 # get the built libs into the correct place
 SET(LIBRARY_OUTPUT_PATH ${libDir})
 
 ADD_LIBRARY(easylzma_s STATIC ${SRCS} ${HDRS})
+ADD_LIBRARY(easylzma   SHARED ${SRCS} ${HDRS})
+
+# setup shared library version numbering
+SET_TARGET_PROPERTIES(
+    easylzma PROPERTIES
+    SOVERSION ${EASYLZMA_MAJOR}
+    VERSION ${EASYLZMA_MAJOR}.${EASYLZMA_MINOR}.${EASYLZMA_MICRO})
+
+# create these output directories
+FILE(MAKE_DIRECTORY ${libDir})
+FILE(MAKE_DIRECTORY ${incDir})
 
 ### copy the two required headers into our output dir as a post build step
 # copy public headers to output directory

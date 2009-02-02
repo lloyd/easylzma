@@ -1,3 +1,16 @@
+/*
+ * Copyright 2009, Lloyd Hilaiel.
+ *
+ * License
+ * 
+ * All the cruft you find here is public domain.  You don't have to credit
+ * anyone to use this code, but my personal request is that you mention
+ * Igor Pavlov for his hard, high quality work.
+ *
+ * easylzma/common.h - definitions common to both compression and
+ *                     decompression
+ */
+
 #ifndef __EASYLZMACOMMON_H__ 
 #define __EASYLZMACOMMON_H__ 
 

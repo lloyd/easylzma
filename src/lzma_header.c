@@ -1,6 +1,14 @@
-/* code showing us how to parse "proper" lzma file headers.
- * we need to augment with stuff to read and write these 13 byte
- * headers simply. */
+/*
+ * Copyright 2009, Lloyd Hilaiel.
+ *
+ * License
+ * 
+ * All the cruft you find here is public domain.  You don't have to credit
+ * anyone to use this code, but my personal request is that you mention
+ * Igor Pavlov for his hard, high quality work.
+ */
+
+/* XXX: clean this up, it's mostly lifted from pavel */
 
 #include "lzma_header.h"
 

@@ -1,3 +1,13 @@
+/*
+ * Copyright 2009, Lloyd Hilaiel.
+ *
+ * License
+ * 
+ * All the cruft you find here is public domain.  You don't have to credit
+ * anyone to use this code, but my personal request is that you mention
+ * Igor Pavlov for his hard, high quality work.
+ */
+
 #include "easylzma/decompress.h"
 #include "pavlov/LzmaDec.h"
 #include "common_internal.h"
@@ -148,4 +158,3 @@ elzma_decompress_run(elzma_decompress_handle hand,
 
     return errorCode;
 }
-
