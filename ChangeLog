@@ -1,0 +1,9 @@
+0.0.2
+	* lloyd fix dynamic libraries on osx 10.4
+	* lloyd README updated with supported platforms and more accurate
+	        information on the upcoming xz format.
+
+0.0.1
+	* lloyd initial complete easylzma library implementation with
+	        simple command line tools mainly intended for testing of
+	        the library
