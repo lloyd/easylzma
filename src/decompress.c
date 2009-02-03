@@ -98,6 +98,7 @@ elzma_decompress_run(elzma_decompress_handle hand,
         size_t srcLen = ELZMA_DECOMPRESS_INPUT_BUFSIZE;
         size_t amt = 0;
         size_t bufOff = 0;
+		ELzmaStatus stat;
 
         if (0 != inputStream(inputContext, hand->inbuf, &srcLen))
         {
@@ -116,7 +117,7 @@ elzma_decompress_run(elzma_decompress_handle hand,
         /* handle the case where a single read buffer of compressed bytes
          * will translate into multiple buffers of uncompressed bytes,
          * with this inner loop */
-        ELzmaStatus stat = LZMA_STATUS_NOT_SPECIFIED;
+        stat = LZMA_STATUS_NOT_SPECIFIED;
 
         while (bufOff < srcLen) {
             SRes r = LzmaDec_DecodeToBuf(&dec, (Byte *) hand->outbuf, &dstLen,

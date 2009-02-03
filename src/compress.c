@@ -132,6 +132,7 @@ elzma_compress_run(elzma_compress_handle hand,
 {
     struct elzmaInStream inStreamStruct;
     struct elzmaOutStream outStreamStruct;    
+	SRes r;
 
     if (hand == NULL || inputStream == NULL) return ELZMA_E_BAD_PARAMS;
 
@@ -169,11 +170,11 @@ elzma_compress_run(elzma_compress_handle hand,
         size_t wt;
 
         initLzmaHeader(&h);
-        h.pb = hand->props.pb;
-        h.lp = hand->props.lp;
-        h.lc = hand->props.lc;
+        h.pb = (unsigned char) hand->props.pb;
+        h.lp = (unsigned char) hand->props.lp;
+        h.lc = (unsigned char) hand->props.lc;
         h.dictSize = hand->props.dictSize;
-        h.isStreamed = (hand->uncompressedSize == 0);
+        h.isStreamed = (unsigned char) (hand->uncompressedSize == 0);
         h.uncompressedSize = hand->uncompressedSize;
 
         serializeLzmaHeader(hdr, &h);
@@ -187,11 +188,11 @@ elzma_compress_run(elzma_compress_handle hand,
     
     /* begin LZMA encoding */
     /* XXX: expose encoding progress */
-    SRes r = LzmaEnc_Encode(hand->encHand,
-                            (ISeqOutStream *) &outStreamStruct,
-                            (ISeqInStream *) &inStreamStruct, NULL,
-                            (ISzAlloc *) &(hand->allocStruct),
-                            (ISzAlloc *) &(hand->allocStruct));
+    r = LzmaEnc_Encode(hand->encHand,
+                       (ISeqOutStream *) &outStreamStruct,
+                       (ISeqInStream *) &inStreamStruct, NULL,
+                       (ISzAlloc *) &(hand->allocStruct),
+                       (ISzAlloc *) &(hand->allocStruct));
 
     /* XXX: support a footer! (lzip) */
 

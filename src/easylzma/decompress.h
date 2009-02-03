@@ -15,19 +15,23 @@
 
 #include "easylzma/common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif    
+
 /** an opaque handle to an lzma decompressor */
 typedef struct _elzma_decompress_handle * elzma_decompress_handle;
 
 /**
  * Allocate a handle to an LZMA decompressor object.
  */ 
-elzma_decompress_handle elzma_decompress_alloc();
+elzma_decompress_handle EASYLZMA_API elzma_decompress_alloc();
 
 /**
  * set allocation routines (optional, if not called malloc & free will
  * be used) 
  */ 
-void elzma_decompress_set_allocation_callbacks(
+void EASYLZMA_API elzma_decompress_set_allocation_callbacks(
     elzma_decompress_handle hand,
     elzma_malloc mallocFunc, void * mallocFuncContext,
     elzma_free freeFunc, void * freeFuncContext);
@@ -35,14 +39,19 @@ void elzma_decompress_set_allocation_callbacks(
 /**
  * Free all data associated with an LZMA decompressor object.
  */ 
-void elzma_decompress_free(elzma_decompress_handle * hand);
+void EASYLZMA_API elzma_decompress_free(elzma_decompress_handle * hand);
 
 /**
  * Perform decompression
  */ 
-int elzma_decompress_run(
+int EASYLZMA_API elzma_decompress_run(
     elzma_decompress_handle hand,
     elzma_read_callback inputStream, void * inputContext,
     elzma_write_callback outputStream, void * outputContext);
+
+
+#ifdef __cplusplus
+};
+#endif    
 
 #endif

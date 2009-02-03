@@ -14,8 +14,11 @@
 #define __EASYLZMACOMPRESS_H__ 
 
 #include "easylzma/common.h"
-
 #include <stdlib.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif    
 
 /** suggested default values */
 #define ELZMA_LC_DEFAULT 3
@@ -29,13 +32,13 @@ typedef struct _elzma_compress_handle * elzma_compress_handle;
 /**
  * Allocate a handle to an LZMA compressor object.
  */ 
-elzma_compress_handle elzma_compress_alloc();
+elzma_compress_handle EASYLZMA_API elzma_compress_alloc();
 
 /**
  * set allocation routines (optional, if not called malloc & free will
  * be used) 
  */ 
-void elzma_compress_set_allocation_callbacks(
+void EASYLZMA_API elzma_compress_set_allocation_callbacks(
     elzma_compress_handle hand,
     elzma_malloc mallocFunc, void * mallocFuncContext,
     elzma_free freeFunc, void * freeFuncContext);
@@ -43,28 +46,32 @@ void elzma_compress_set_allocation_callbacks(
 /**
  * Free all data associated with an LZMA compressor object.
  */ 
-void elzma_compress_free(elzma_compress_handle * hand);
+void EASYLZMA_API elzma_compress_free(elzma_compress_handle * hand);
 
 /**
  * Set configuration paramters for a compression run.  If not called,
  * reasonable defaults will be used.
  */ 
-int elzma_compress_config(elzma_compress_handle hand,
-                          unsigned char lc,
-                          unsigned char lp,
-                          unsigned char pb,
-                          unsigned char level,
-                          unsigned int dictionarySize,
-                          elzma_file_format format,
-                          unsigned long long uncompressedSize);
+int EASYLZMA_API elzma_compress_config(elzma_compress_handle hand,
+                                       unsigned char lc,
+                                       unsigned char lp,
+                                       unsigned char pb,
+                                       unsigned char level,
+                                       unsigned int dictionarySize,
+                                       elzma_file_format format,
+                                       unsigned long long uncompressedSize);
 
 /**
  * Run compression
  */ 
-int elzma_compress_run(
+int EASYLZMA_API elzma_compress_run(
     elzma_compress_handle hand,
     elzma_read_callback inputStream, void * inputContext,
     elzma_write_callback outputStream, void * outputContext);
 
+
+#ifdef __cplusplus
+};
+#endif    
 
 #endif

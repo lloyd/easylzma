@@ -7,6 +7,10 @@
 # Igor Pavlov for his hard, high quality work.
 #
 
+IF (WIN32)
+  ADD_DEFINITIONS(-DWIN32)
+ENDIF (WIN32)
+
 FILE(GLOB SRCS pavlov/*.c *.c)
 FILE(GLOB HDRS *.h pavlov/*.h easylzma/*.h)
 FILE(GLOB PUB_HDRS easylzma/*.h)
@@ -32,6 +36,10 @@ SET_TARGET_PROPERTIES(
     easylzma PROPERTIES
     SOVERSION ${EASYLZMA_MAJOR}
     VERSION ${EASYLZMA_MAJOR}.${EASYLZMA_MINOR}.${EASYLZMA_MICRO})
+
+# on win32 we'll need to setup exports correctly
+SET_TARGET_PROPERTIES(
+    easylzma PROPERTIES COMPILE_FLAGS "-DEASYLZMA_SHARED -DEASYLZMA_BUILD")
 
 # create these output directories
 FILE(MAKE_DIRECTORY ${libDir})

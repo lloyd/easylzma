@@ -16,6 +16,23 @@
 
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif    
+
+/* msft dll export gunk.  To build a DLL on windows, you
+ * must define WIN32, EASYLZMA_SHARED, and EASYLZMA_BUILD.  To use a 
+ * DLL, you must define EASYLZMA_SHARED and WIN32 */
+#if defined(WIN32) && defined(EASYLZMA_SHARED)
+#  ifdef EASYLZMA_BUILD
+#    define EASYLZMA_API __declspec(dllexport)
+#  else
+#    define EASYLZMA_API __declspec(dllimport)
+#  endif
+#else
+#  define EASYLZMA_API
+#endif 
+
 /** error codes */
 
 /** no error */
@@ -51,7 +68,6 @@ typedef enum {
 */
 } elzma_file_format;
 
-
 /**
  * A callback invoked during elzma_[de]compress_run when the [de]compression
  * process has generated [de]compressed output.
@@ -85,5 +101,8 @@ typedef void * (*elzma_malloc)(void *ctx, unsigned int sz);
  *  allocation routines */
 typedef void (*elzma_free)(void *ctx, void * ptr);
 
+#ifdef __cplusplus
+extern "C" {
+#endif    
 
 #endif
