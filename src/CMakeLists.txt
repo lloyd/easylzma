@@ -38,8 +38,13 @@ SET_TARGET_PROPERTIES(
     VERSION ${EASYLZMA_MAJOR}.${EASYLZMA_MINOR}.${EASYLZMA_MICRO})
 
 # on win32 we'll need to setup exports correctly
-SET_TARGET_PROPERTIES(
-    easylzma PROPERTIES COMPILE_FLAGS "-DEASYLZMA_SHARED -DEASYLZMA_BUILD")
+SET(sharedLibCompileFlags "-DEASYLZMA_SHARED -DEASYLZMA_BUILD")
+IF (APPLE)
+  SET(sharedLibCompileFlags "${sharedLibCompileFlags} -fno-common")
+ENDIF (APPLE)
+
+SET_TARGET_PROPERTIES(easylzma PROPERTIES
+                      COMPILE_FLAGS ${sharedLibCompileFlags})
 
 # create these output directories
 FILE(MAKE_DIRECTORY ${libDir})
