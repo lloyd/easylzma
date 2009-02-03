@@ -79,7 +79,7 @@ compressed data in a stream:
    This format will address some criticisms to the LZMA-Alone format and
    was developed collaboratively by Lasse Collin (the current maintainer
    of XZ utils) and Igor Pavlov (the author of 7zip and the refrence
-   implementation of LZMA.
+   implementation of LZMA).
 
    The xz format will employ LZMA2 which consists of extensions on top
    of LZMA, in the xz utils maintainer's words:
@@ -90,11 +90,11 @@ compressed data in a stream:
     to zlib's Z_SYNC_FLUSH), which isn't possible with the original
     LZMA."
 
-    Again, maintainers words, regarding licensing:
+   Again, maintainers words, regarding licensing:
 
-    "XZ Utils currently contains a zlib-like compression library and a 
-     gzip-like command line tool. It's currently under LGPLv2.1+ but I will 
-     put it into the public domain before the first stable release."
+   "XZ Utils currently contains a zlib-like compression library and a 
+    gzip-like command line tool. It's currently under LGPLv2.1+ but I will 
+    put it into the public domain before the first stable release."
 
 4. The 7zip disk format which can contain multiple files possibly stored in
    LZMA compressed format.
