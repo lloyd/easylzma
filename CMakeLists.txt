@@ -1,4 +1,4 @@
-# Copyright 2009, Lloyd Hilaiel.
+# Written in 2009 by Lloyd Hilaiel
 #
 # License
 # 
