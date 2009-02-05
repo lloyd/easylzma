@@ -17,8 +17,8 @@ SET (binDir ${CMAKE_CURRENT_BINARY_DIR}/../${EASYLZMA_DIST_NAME}/bin)
 # create some directories
 FILE(MAKE_DIRECTORY ${binDir})
 
-SET (SRCS elzma.c)
-SET (HDRS )
+SET (SRCS elzma.c util.c)
+SET (HDRS util.h)
 
 # use the library we built
 INCLUDE_DIRECTORIES(

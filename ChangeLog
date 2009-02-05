@@ -1,3 +1,6 @@
+0.0.3
+	* lloyd implement source file deletion and the --keep flag
+
 0.0.2
 	* lloyd fix dynamic libraries on osx 10.4
 	* lloyd README updated with supported platforms and more accurate

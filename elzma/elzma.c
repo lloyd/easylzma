@@ -20,6 +20,7 @@
 
 #include "easylzma/compress.h"
 #include "easylzma/decompress.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -198,6 +199,7 @@ doCompress(int argc, char ** argv)
     /* now attempt to open input and ouput files */
     /* XXX: stdin/stdout support */
     if (0 != openFiles(ifname, &inFile, ofname, &outFile, overwrite)) {
+        deleteFile(ofname);
         return 1;
     }
     
@@ -208,6 +210,7 @@ doCompress(int argc, char ** argv)
     {
         fprintf(stderr, "error seeking input file (%s) - zero length?\n",
                 ifname);
+        deleteFile(ofname);
         return 1;
     }
 
@@ -222,6 +225,7 @@ doCompress(int argc, char ** argv)
     hand = elzma_compress_alloc();
     if (hand == NULL) {
         fprintf(stderr, "couldn't allocate compression object\n");
+        deleteFile(ofname);
         return 1;
     }
     
@@ -231,6 +235,7 @@ doCompress(int argc, char ** argv)
     {
         fprintf(stderr, "couldn't configure compression with "
                 "provided parameters\n");
+        deleteFile(ofname);
         return 1;
     }
     
@@ -239,6 +244,7 @@ doCompress(int argc, char ** argv)
             elzmaWriteFunc, (void *) outFile))
     {
         fprintf(stderr, "error compressing\n");
+        deleteFile(ofname);
         return 1;
     }
 
@@ -247,6 +253,8 @@ doCompress(int argc, char ** argv)
     fclose(inFile);
     fclose(outFile);
     free(ofname);
+
+    if (!keep) deleteFile(ifname);
 
     return 0;
 }
@@ -352,12 +360,14 @@ doDecompress(int argc, char ** argv)
     /* now attempt to open input and ouput files */
     /* XXX: stdin/stdout support */
     if (0 != openFiles(ifname, &inFile, ofname, &outFile, overwrite)) {
+        deleteFile(ofname);
         return 1;
     }
 
     hand = elzma_decompress_alloc();
     if (hand == NULL) {
         fprintf(stderr, "couldn't allocate decompression object\n");
+        deleteFile(ofname);
         return 1;
     }
 
@@ -366,12 +376,15 @@ doDecompress(int argc, char ** argv)
             elzmaWriteFunc, (void *) outFile))
     {
         fprintf(stderr, "error decompressing\n");
+        deleteFile(ofname);
         return 1;
     }
 
     elzma_decompress_free(&hand);    
 
-    return 1;
+    if (!keep) deleteFile(ifname);
+
+    return 0;
 }
 
 int
