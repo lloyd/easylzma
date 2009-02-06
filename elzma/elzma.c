@@ -55,6 +55,8 @@ openFiles(const char * ifname, FILE ** inFile, const char * ofname,
 "  -f, --force      overwrite output files if they exist\n"\
 "  -h, --help       output this message and exit\n"\
 "  -k, --keep       don't delete input files\n"\
+"  --lzip           compress to lzip disk format (.lz extension)\n"\
+"  --lzma           compress to LZMA-Alone disk format (.lzma extension)\n"\
 "  -v, --verbose    output verbose status information while compressing\n"\
 "  -z, --compress   compress files (default when invoking elzma program)\n"\
 "  -d, --decompress decompress files (default when invoking unelzma program)\n"\
@@ -66,7 +68,8 @@ openFiles(const char * ifname, FILE ** inFile, const char * ofname,
 static int parseCompressArgs(int argc, char ** argv, unsigned char * level,
                              char ** fname, unsigned int * dictSize,
                              unsigned int * verbose, unsigned int * keep,
-                             unsigned int * overwrite)
+                             unsigned int * overwrite,
+                             elzma_file_format * format)
 {
     int i;
     
@@ -110,6 +113,14 @@ static int parseCompressArgs(int argc, char ** argv, unsigned char * level,
             else if (strlen(arg) == 1 && arg[0] >= '1' && arg[0] <= '9')
             {
                 *level = arg[0] - '0';
+            }
+            else if (!strcmp(arg, "lzma"))
+            {
+                *format = ELZMA_lzma;
+            }
+            else if (!strcmp(arg, "lzip"))
+            {
+                *format = ELZMA_lzip;
             }
             else if (!strcmp(arg, "z") || !strcmp(arg, "d") ||
                      !strcmp(arg, "compress") || !strcmp(arg, "decompress"))
@@ -180,13 +191,15 @@ doCompress(int argc, char ** argv)
     unsigned int overwrite = 0;
 
     if (0 != parseCompressArgs(argc, argv, &level, &ifname,
-                               &dictSize, &verbose, &keep, &overwrite))
+                               &dictSize, &verbose, &keep, &overwrite,
+                               &format))
     {
         fprintf(stderr, ELZMA_COMPRESS_USAGE);
         return 1;
     }
 
-    /* XXX: type/extension switching */
+    /* extension switching based on compression type*/
+    if (format == ELZMA_lzip) ext = ".lz";
 
     /* generate output file name */
     {
@@ -199,7 +212,6 @@ doCompress(int argc, char ** argv)
     /* now attempt to open input and ouput files */
     /* XXX: stdin/stdout support */
     if (0 != openFiles(ifname, &inFile, ofname, &outFile, overwrite)) {
-        deleteFile(ofname);
         return 1;
     }
     
@@ -327,7 +339,6 @@ static int parseDecompressArgs(int argc, char ** argv, char ** fname,
 static int
 doDecompress(int argc, char ** argv)
 {
-    char * ext = ".lzma";
     char * ifname = NULL;
     char * ofname = NULL;
     unsigned int verbose = 0;
@@ -336,6 +347,10 @@ doDecompress(int argc, char ** argv)
     elzma_decompress_handle hand = NULL;
     unsigned int overwrite = 0;
     unsigned int keep = 0;
+    elzma_file_format format;
+    const char * lzmaExt = ".lzma";
+    const char * lzipExt = ".lz";
+    const char * ext = ".lz";
 
     if (0 != parseDecompressArgs(argc, argv, &ifname, &verbose,
                                  &keep, &overwrite))
@@ -345,22 +360,32 @@ doDecompress(int argc, char ** argv)
     }
 
     /* generate output file name */
-    if (strlen(ifname) < strlen(ext) ||
-        0 != strcmp(ext, ifname + strlen(ifname) - strlen(ext)))
+    if (strlen(ifname) > strlen(lzmaExt) &&
+        0 == strcmp(lzmaExt, ifname + strlen(ifname) - strlen(lzmaExt)))
     {
-        /* XXX add 7zip support */
-        fprintf(stderr, "input file missing required %s extension\n", ext);
+        format = ELZMA_lzma;
+        ext = lzmaExt;
+    }
+    else if (strlen(ifname) > strlen(lzipExt) &&
+             0 == strcmp(lzipExt, ifname + strlen(ifname) - strlen(lzipExt)))
+    {
+        format = ELZMA_lzip;
+        ext = lzipExt;
+    }
+    else
+    {
+        fprintf(stderr, "input file extension not recognized (expected either "
+                "%s or %s)", lzmaExt, lzipExt);
         return 1;
     }
 
-    ofname = malloc(strlen(ifname) - strlen(".lzma"));
+    ofname = malloc(strlen(ifname) - strlen(ext));
     ofname[0] = 0;
-    strncat(ofname, ifname, strlen(ifname) - strlen(".lzma"));
+    strncat(ofname, ifname, strlen(ifname) - strlen(ext));
 
     /* now attempt to open input and ouput files */
     /* XXX: stdin/stdout support */
     if (0 != openFiles(ifname, &inFile, ofname, &outFile, overwrite)) {
-        deleteFile(ofname);
         return 1;
     }
 
@@ -373,7 +398,7 @@ doDecompress(int argc, char ** argv)
 
     if (ELZMA_E_OK != elzma_decompress_run(
             hand, elzmaReadFunc, (void *) inFile,
-            elzmaWriteFunc, (void *) outFile))
+            elzmaWriteFunc, (void *) outFile, format))
     {
         fprintf(stderr, "error decompressing\n");
         deleteFile(ofname);

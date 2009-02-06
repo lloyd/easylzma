@@ -10,10 +10,12 @@
 
 #include "easylzma/compress.h"
 #include "lzma_header.h"
+#include "lzip_header.h"
 #include "common_internal.h"
 
 #include "pavlov/Types.h"
 #include "pavlov/LzmaEnc.h"
+#include "pavlov/7zCrc.h"
 
 #include <string.h>
 
@@ -23,6 +25,7 @@ struct _elzma_compress_handle {
     unsigned long long uncompressedSize;
     elzma_file_format format;
     struct elzma_alloc_struct allocStruct;
+    struct elzma_format_handler formatHandler;
 };
 
 elzma_compress_handle
@@ -47,6 +50,9 @@ elzma_compress_alloc()
     hand->props.writeEndMark = 1;
 
     init_alloc_struct(&(hand->allocStruct), NULL, NULL, NULL, NULL);
+
+    /* default format is LZMA-Alone */
+    initializeLZMAFormatHandler(&(hand->formatHandler));
 
     return hand;
 }
@@ -85,6 +91,12 @@ elzma_compress_config(elzma_compress_handle hand,
     hand->uncompressedSize = uncompressedSize;
     hand->format = format;
 
+    /* default of LZMA-Alone is set at alloc time, and there are only
+     * two possible formats */
+    if (format == ELZMA_lzip) {
+        initializeLZIPFormatHandler(&(hand->formatHandler));
+    }
+
     return ELZMA_E_OK;
 }
 
@@ -94,11 +106,22 @@ struct elzmaInStream
     SRes (*ReadPtr)(void *p, void *buf, size_t *size);
     elzma_read_callback inputStream;
     void * inputContext;
+    unsigned int crc32;
+    unsigned int crc32a;
+    unsigned int crc32b;
+    unsigned int crc32c;
+    int calculateCRC;
 };
+
 static SRes elzmaReadFunc(void *p, void *buf, size_t *size)
 {
+    int rv;
     struct elzmaInStream * is = (struct elzmaInStream *) p;
-    return is->inputStream(is->inputContext, buf, size);
+    rv = is->inputStream(is->inputContext, buf, size);
+    if (rv == 0 && *size > 0 && is->calculateCRC) {
+        is->crc32 = CrcUpdate(is->crc32, buf, *size);
+    }
+    return rv;
 }
 
 struct elzmaOutStream {
@@ -134,12 +157,17 @@ elzma_compress_run(elzma_compress_handle hand,
     struct elzmaOutStream outStreamStruct;    
 	SRes r;
 
+    CrcGenerateTable();
+
     if (hand == NULL || inputStream == NULL) return ELZMA_E_BAD_PARAMS;
 
     /* initialize stream structrures */
     inStreamStruct.ReadPtr = elzmaReadFunc;
     inStreamStruct.inputStream = inputStream;    
     inStreamStruct.inputContext = inputContext;    
+    inStreamStruct.crc32 = CRC_INIT_VAL;
+    inStreamStruct.calculateCRC =
+        (hand->formatHandler.serialize_footer != NULL);
 
     outStreamStruct.WritePtr = elzmaWriteFunc;
     outStreamStruct.outputStream = outputStream;    
@@ -158,18 +186,21 @@ elzma_compress_run(elzma_compress_handle hand,
         return ELZMA_E_BAD_PARAMS;
     }
 
-    /* XXX: support lzip */
-    if (ELZMA_lzma != hand->format) {
+    /* verify format is sane */
+    if (ELZMA_lzma != hand->format && ELZMA_lzip != hand->format) {
         return ELZMA_E_UNSUPPORTED_FORMAT;
     }
 
-    /* now write the LZMA header */ 
+    /* now write the compression header header */ 
     {
-        unsigned char hdr[ELZMA_LZMA_HEADER_SIZE];
-        struct elzma_lzma_header h;
+        unsigned char * hdr =
+            hand->allocStruct.Alloc(&(hand->allocStruct),
+                                    hand->formatHandler.header_size);
+        
+        struct elzma_file_header h;
         size_t wt;
 
-        initLzmaHeader(&h);
+        hand->formatHandler.init_header(&h);
         h.pb = (unsigned char) hand->props.pb;
         h.lp = (unsigned char) hand->props.lp;
         h.lc = (unsigned char) hand->props.lc;
@@ -177,11 +208,14 @@ elzma_compress_run(elzma_compress_handle hand,
         h.isStreamed = (unsigned char) (hand->uncompressedSize == 0);
         h.uncompressedSize = hand->uncompressedSize;
 
-        serializeLzmaHeader(hdr, &h);
+        hand->formatHandler.serialize_header(hdr, &h);
 
         wt = outputStream(outputContext, (void *) hdr,
-                          ELZMA_LZMA_HEADER_SIZE);
-        if (wt != ELZMA_LZMA_HEADER_SIZE) {
+                          hand->formatHandler.header_size);
+
+        hand->allocStruct.Free(&(hand->allocStruct), hdr);
+        
+        if (wt != hand->formatHandler.header_size) {
             return ELZMA_E_OUTPUT_ERROR;
         }
     }
@@ -194,9 +228,31 @@ elzma_compress_run(elzma_compress_handle hand,
                        (ISzAlloc *) &(hand->allocStruct),
                        (ISzAlloc *) &(hand->allocStruct));
 
-    /* XXX: support a footer! (lzip) */
-
     if (r != SZ_OK) return ELZMA_E_COMPRESS_ERROR;
+
+    /* support a footer! (lzip) */
+    if (hand->formatHandler.serialize_footer != NULL &&
+        hand->formatHandler.footer_size > 0)
+    {
+        size_t wt;
+        unsigned char * ftrBuf = 
+            hand->allocStruct.Alloc(&(hand->allocStruct),
+                                    hand->formatHandler.footer_size);
+        struct elzma_file_footer ftr;
+        ftr.crc32 = inStreamStruct.crc32 ^ 0xFFFFFFFF;
+        ftr.uncompressedSize = hand->uncompressedSize;
+
+        hand->formatHandler.serialize_footer(&ftr, ftrBuf);
+
+        wt = outputStream(outputContext, (void *) &ftr,
+                          hand->formatHandler.footer_size);
+
+        hand->allocStruct.Free(&(hand->allocStruct), ftrBuf);
+        
+        if (wt != hand->formatHandler.footer_size) {
+            return ELZMA_E_OUTPUT_ERROR;
+        }
+    }
     
     return ELZMA_E_OK;
 }

@@ -55,6 +55,13 @@ extern "C" {
 #define ELZMA_E_DECOMPRESS_ERROR                17
 /** the input stream returns EOF before the decompression could complete */
 #define ELZMA_E_INSUFFICIENT_INPUT              18
+/** for formats which have an emebedded crc, this error would indicated that
+ *  what came out was not what went in, i.e. data corruption */
+#define ELZMA_E_CRC32_MISMATCH                  19
+/** for formats which have an emebedded uncompressed content length,
+ *  this error indicates that the amount we read was not what we expected */
+#define ELZMA_E_SIZE_MISMATCH                   20
+
 
 /** Supported file formats */
 typedef enum {

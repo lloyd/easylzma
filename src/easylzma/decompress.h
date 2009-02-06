@@ -43,11 +43,16 @@ void EASYLZMA_API elzma_decompress_free(elzma_decompress_handle * hand);
 
 /**
  * Perform decompression
+ *
+ * XXX: should the library automatically detect format by reading stream?
+ *      currently it's based on data external to stream (such as extension
+ *      or convention)
  */ 
 int EASYLZMA_API elzma_decompress_run(
     elzma_decompress_handle hand,
     elzma_read_callback inputStream, void * inputContext,
-    elzma_write_callback outputStream, void * outputContext);
+    elzma_write_callback outputStream, void * outputContext,
+    elzma_file_format format);
 
 
 #ifdef __cplusplus

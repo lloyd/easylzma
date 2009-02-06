@@ -15,6 +15,9 @@
 #include <string.h>
 #include <assert.h>
 
+#define ELZMA_LZMA_HEADER_SIZE 13
+#define ELZMA_LZMA_PROPSBUF_SIZE 5
+
 /****************
   Header parsing
  ****************/
@@ -54,8 +57,9 @@ lzmadec_header_dictionary (unsigned int *size, const unsigned char *buffer)
 
 /* Parse the uncompressed size field (8 bytes, little endian) */
 static void
-lzmadec_header_uncompressed (unsigned long long *size, unsigned char *is_streamed,
-	const unsigned char *buffer)
+lzmadec_header_uncompressed (unsigned long long *size,
+                             unsigned char *is_streamed,
+                             const unsigned char *buffer)
 {
 	unsigned int i;
 
@@ -72,15 +76,15 @@ lzmadec_header_uncompressed (unsigned long long *size, unsigned char *is_streame
 			|| (*is_streamed == 0 && *size < UINT64_MAX));
 }
 
-void
-initLzmaHeader(struct elzma_lzma_header * hdr)
+static void
+initLzmaHeader(struct elzma_file_header * hdr)
 {
-    memset((void *) hdr, 0, sizeof(struct elzma_lzma_header));
+    memset((void *) hdr, 0, sizeof(struct elzma_file_header));
 }
 
-int
+static int
 parseLzmaHeader(const unsigned char * hdrBuf,
-                struct elzma_lzma_header * hdr)
+                struct elzma_file_header * hdr)
 {
     if (lzmadec_header_properties(&(hdr->pb), &(hdr->lp), &(hdr->lc),
                                   *hdrBuf) ||
@@ -95,9 +99,9 @@ parseLzmaHeader(const unsigned char * hdrBuf,
     return 0;
 }
 
-int
+static int
 serializeLzmaHeader(unsigned char * hdrBuf,
-                    const struct elzma_lzma_header * hdr)
+                    const struct elzma_file_header * hdr)
 {
     unsigned int i;
     
@@ -121,4 +125,15 @@ serializeLzmaHeader(unsigned char * hdrBuf,
     }
 
     return 0;
+}
+
+void
+initializeLZMAFormatHandler(struct elzma_format_handler * hand)
+{
+    hand->header_size = ELZMA_LZMA_HEADER_SIZE;
+    hand->init_header = initLzmaHeader;
+    hand->parse_header = parseLzmaHeader;    
+    hand->serialize_header = serializeLzmaHeader;    
+    hand->footer_size = 0;    
+    hand->serialize_footer = NULL;
 }
