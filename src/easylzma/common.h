@@ -109,7 +109,7 @@ typedef void * (*elzma_malloc)(void *ctx, unsigned int sz);
 typedef void (*elzma_free)(void *ctx, void * ptr);
 
 #ifdef __cplusplus
-extern "C" {
+};
 #endif    
 
 #endif
