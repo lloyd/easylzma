@@ -39,7 +39,7 @@ serializeLzipHeader(unsigned char * hdrBuf,
     {
         int r = 0;
         while ((hdr->dictSize >> r) != 0) r++;
-        hdrBuf[5] = (r-1) & 0x1F;
+        hdrBuf[5] = (unsigned char) (r-1) & 0x1F;
     }        
     return 0;
 }
@@ -74,7 +74,8 @@ parseLzipFooter(const unsigned char * ftrBuf,
     ftr->uncompressedSize = 0;    
 
     /* first crc32 */
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 4; i++)
+    {
         ftr->crc32 += ((unsigned int) *(ftrBuf++) << (i * 8)); 
     }
 
@@ -83,7 +84,6 @@ parseLzipFooter(const unsigned char * ftrBuf,
         ftr->uncompressedSize +=
             (unsigned long long) *(ftrBuf++) << (i * 8); 
     }
-
     /* read version 0 files, omit member length for now*/
     
     return 0;

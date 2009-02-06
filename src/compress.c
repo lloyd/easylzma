@@ -244,7 +244,7 @@ elzma_compress_run(elzma_compress_handle hand,
 
         hand->formatHandler.serialize_footer(&ftr, ftrBuf);
 
-        wt = outputStream(outputContext, (void *) &ftr,
+        wt = outputStream(outputContext, (void *) ftrBuf,
                           hand->formatHandler.footer_size);
 
         hand->allocStruct.Free(&(hand->allocStruct), ftrBuf);
