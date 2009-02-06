@@ -1,5 +1,7 @@
 0.0.4
-	
+	* lloyd fix typo in extern "C" wrappers for correct usage from
+	         c++ libraries	
+
 0.0.3
 	* lloyd implement source file deletion and the --keep flag
 	* lloyd add support for lzip file format
