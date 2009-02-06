@@ -22,7 +22,9 @@
   Header parsing
  ****************/
 
+#ifndef UINT64_MAX
 #define UINT64_MAX ((unsigned long long) -1)
+#endif
 
 /* Parse the properties byte */
 static char
