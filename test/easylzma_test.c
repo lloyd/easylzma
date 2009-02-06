@@ -140,7 +140,7 @@ static int roundTripTest(elzma_file_format format)
     rc = simpleCompress(format, (unsigned char *) sampleData,
                         strlen(sampleData), &compressed, &sz);
 
-    if (rc != ELZMA_E_OK) return 1;
+    if (rc != ELZMA_E_OK) return rc;
 
     /* gross assurance that compression is actually compressing */
     if (sz > strlen(sampleData)) {
@@ -153,7 +153,7 @@ static int roundTripTest(elzma_file_format format)
 
     free(compressed);
 
-    if (rc != ELZMA_E_OK) return 1;
+    if (rc != ELZMA_E_OK) return rc;
     
     if (sz != strlen(sampleData) ||
         0 != memcmp(decompressed, sampleData, sz))
@@ -162,7 +162,7 @@ static int roundTripTest(elzma_file_format format)
         return 1;
     }
     
-    return 0;
+    return ELZMA_E_OK;
 }
 
 /* "correct" lzip generated from the lzip program */
@@ -268,9 +268,8 @@ main(void)
     printf("round trip lzma test:    ");
     fflush(stdout);
     testsRun++;
-    if (roundTripTest(ELZMA_lzma)) {
-        printf("fail!\n");
-        rc = 1;
+    if (ELZMA_E_OK != (rc = roundTripTest(ELZMA_lzma))) {
+        printf("fail! (%d)\n", rc);
     } else {
         testsPassed++;
         printf("ok\n");
@@ -279,9 +278,8 @@ main(void)
     printf("round trip lzip test:    ");
     fflush(stdout);
     testsRun++;
-    if (roundTripTest(ELZMA_lzip)) {
-        printf("fail!\n");
-        rc = 1;
+    if (ELZMA_E_OK != (rc = roundTripTest(ELZMA_lzip))) {
+        printf("fail (%d)!\n", rc);
     } else {
         testsPassed++;
         printf("ok\n");
@@ -295,7 +293,7 @@ main(void)
         
         printf("%s test:    ", tests[i].testName);
         rc = simpleDecompress(tests[i].format, tests[i].data,
-                            tests[i].dataSize, &decompressed, &sz);
+                              tests[i].dataSize, &decompressed, &sz);
 
         testsRun++;
         if (rc != tests[i].expectedCode) {
