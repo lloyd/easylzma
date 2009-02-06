@@ -1,12 +1,8 @@
-1. 7zip format support
-2. complete test suite
-  a. command line invocation tests
-  b. round trip tests with lzmautils and lzip utils
-     (only run when other tools present and in path)
-  c. bad input tests with lzma files corrupted in various ways
-3. stdout/stdin support
+1. more tests - live round trip tests using lzip and lzmautils if available
+   on build system
+2. proper handling of two different lzip compression versions
 4. multiple files on command line
-5. optimal lzma parameter discovery
+5. optimal lzma parameter discovery - dict size
 6. example code
 7. doxygen output - html and man pages
 8. preservation of permissions
