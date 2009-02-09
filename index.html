@@ -9,21 +9,46 @@
     
     <style type="text/css">
       body {
-        margin-top: 1.0em;
+	    background-color: #D5D6D7;
+	    padding:20px;
+	    text-align: center;
+        align: center;
+	  }
+      .header {
+	    border-bottom: 1px solid #959596;
+	    padding: 5px;
+        color: #ffffff;
         background-color: rgb(115, 160, 197);
+	  }
+      .header a {
+	    text-decoration: none;
+        color: #ffffff;
+	  }
+      .pageTitle {
+	    font-size: 3em;
+	    font-weight: normal;
+	  }
+      .small { font-size: 1em; }
+
+      #outerContainer {
+        border:1px solid #959596;
         font-family: "helvetica"; 
         color: #000000;
+        margin: 0 auto;
+        background-color: #ffffff;
       }
       #container {
-        margin: 0 auto;
+        margin-left: auto;
+        margin-right: auto;
+        text-align: left;
         width: 700px;
+        color: #333333;
       }
       h1 { font-size: 3.8em; color: #736f30; margin-bottom: 3px; }
       h1 .small { font-size: 0.4em; }
       h1 a { text-decoration: none }
-      h2 { font-size: 1.5em; color: #736f30; }
-      h3 { text-align: center; color: #736f30; }
-      a { color: #736f30; }
+      h2 { font-size: 1.5em; }
+      h3 { text-align: center; }
       .description {
 	    font-size: 1.2em;
 	    margin-bottom: 30px;
@@ -34,6 +59,7 @@
       pre { background: #000; color: #fff; padding: 15px;}
       hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
       .footer { text-align:center; padding-top:30px; font-style: italic; }
+      .styleCredit { font-size: 75%; }
     </style>
     
 </head>
@@ -41,35 +67,36 @@
 <body>
   <a href="http://github.com/lloyd/easylzma"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
   
+  <div id="outerContainer">
+  <div class="header">
+    <span class="pageTitle">
+      <a href="http://github.com/lloyd/easylzma">easylzma</a>
+	</span><br>
+    <span class="small">
+	  by <a href="http://github.com/lloyd">lloyd</a>
+	</span>
+  </div>
   <div id="container">
-
-    <div class="download">
-      <a href="http://github.com/lloyd/easylzma/zipball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
-      <a href="http://github.com/lloyd/easylzma/tarball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
-    </div>
-      
-    <h1><a href="http://github.com/lloyd/easylzma">easylzma</a> 
-      <span class="small">by <a href="http://github.com/lloyd">lloyd</a></small></h1>
-
     <div class="description">
       An easy to use, tiny, public domain, C wrapper library around Igor Pavlov's work that can be used to compress and extract lzma files.
     </div>
 
     <h2>License</h2>
-<p>public domain</p>
-<h2>Authors</h2>
-<p>Lloyd Hilaiel (lloyd@hilaiel.com)<br/><br/>      </p>
-<h2>Contact</h2>
-<p>Lloyd Hilaiel (lloyd@hilaiel.com)<br/>      </p>
+    <p>All the cruft you find here is public domain.  You don't have to credit
+       anyone to use this code, but my personal request is that you mention
+       Igor Pavlov for his hard, high quality work.</p>
 
+    <h2>Author</h2>
+      <p>Lloyd Hilaiel (lloyd@hilaiel.com)</p>
 
     <h2>Download</h2>
     <p>
-      You can download this project in either
-      <a href="http://github.com/lloyd/easylzma/zipball/master">zip</a> or
-      <a href="http://github.com/lloyd/easylzma/tarball/master">tar</a> formats.
+      <ul>
+      <li><a href="http://github.com/lloyd/easylzma/zipball/0.0.5">easylzma-0.0.5.zip</a>
+      <li><a href="http://github.com/lloyd/easylzma/tarball/0.0.5">easylzma-0.0.5.tar.gz</a>
+      <li><a href="http://github.com/lloyd/easylzma/zipball/master">easylzma-trunk.zip</a>
+      <li><a href="http://github.com/lloyd/easylzma/tarball/master">easylzma-trunk.tar.gz</a>
+       </ul>
     </p>
     <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
       by running:
@@ -80,8 +107,11 @@
       get the source code on GitHub : <a href="http://github.com/lloyd/easylzma">lloyd/easylzma</a>
     </div>
     
-  </div>
-
-  
+    <div class="styleCredit footer">
+      (page style "borrowed" from
+	   <a href="http://kylecordes.com">Kyle Cordes</a>)
+    </div>
+    
+  </div></div>
 </body>
 </html>
