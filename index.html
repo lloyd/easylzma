@@ -81,13 +81,14 @@
       An easy to use, tiny, public domain, C wrapper library around Igor Pavlov's work that can be used to compress and extract lzma files.
     </div>
 
-    <h2>License</h2>
-    <p>All the cruft you find here is public domain.  You don't have to credit
-       anyone to use this code, but my personal request is that you mention
-       Igor Pavlov for his hard, high quality work.</p>
+    <h2>Overview</h2>
 
-    <h2>Author</h2>
-      <p>Lloyd Hilaiel (lloyd@hilaiel.com)</p>
+      easylzma is a small and portable C library which wraps Igor Pavlov's
+	  LZMA reference implementation.  It comes with command line tools
+	  to compress and uncompress both lzip and LZMA-Alone disk formats.
+      It's also as <a href="http://gist.github.com/59923">fast as any</a>
+	  implementation out there (largely because
+	  it's based on Igor's recent C implementation of LZMA).
 
     <h2>Download</h2>
     <p>
@@ -102,7 +103,130 @@
       by running:
       <pre>$ git clone git://github.com/lloyd/easylzma</pre>
     </p>
-      
+
+    <h2>Example Programmatic Usage In C</h2>
+
+    <pre>
+/*
+ * an example of basic LZMA compression to and from memory buffers
+ * using the easylzma library.
+ */
+ 
+#include "easylzma/compress.h"
+ 
+#include <string.h>
+#include <assert.h>
+ 
+struct dataStream
+{
+    const unsigned char * inData;
+    size_t inLen;
+ 
+    unsigned char * outData;
+    size_t outLen;
+};
+
+/* an input callback that will be passed to elzma_compress_run(),
+ * it reads from a memory buffer */
+static int
+inputCallback(void *ctx, void *buf, size_t * size)
+{
+    size_t rd = 0;
+    struct dataStream * ds = (struct dataStream *) ctx;
+    assert(ds != NULL);
+    
+    rd = (ds->inLen < *size) ? ds->inLen : *size;
+ 
+    if (rd > 0) {
+        memcpy(buf, (void *) ds->inData, rd);
+        ds->inData += rd;
+        ds->inLen -= rd;
+    }
+ 
+    *size = rd;
+ 
+    return 0;
+}
+
+/* an ouput callback that will be passed to elzma_compress_run(),
+ * it reallocs and writes to a memory buffer */
+static size_t
+outputCallback(void *ctx, const void *buf, size_t size)
+{
+    struct dataStream * ds = (struct dataStream *) ctx;
+    assert(ds != NULL);
+    
+    if (size > 0) {
+        ds->outData = realloc(ds->outData, ds->outLen + size);
+        memcpy((void *) (ds->outData + ds->outLen), buf, size);
+        ds->outLen += size;
+    }
+ 
+    return size;
+}
+
+/* a function that will compress data using a 1mb dictionary and a
+ * client specified encoding format (one of ELZMA_lzip or ELZMA_lzma) */
+int
+simpleCompress(elzma_file_format format, const unsigned char * inData,
+               size_t inLen, unsigned char ** outData,
+               size_t * outLen)
+{
+    int rc;
+    elzma_compress_handle hand;
+ 
+    /* allocate compression handle */
+    hand = elzma_compress_alloc();
+    assert(hand != NULL);
+
+    /* configure the compression run with mostly default parameters  */ 
+    rc = elzma_compress_config(hand, ELZMA_LC_DEFAULT,
+                               ELZMA_LP_DEFAULT, ELZMA_PB_DEFAULT,
+                               5, (1 << 20) /* 1mb */,
+                               format, inLen);
+
+    /* fail if we couldn't allocate */  
+    if (rc != ELZMA_E_OK) {
+        elzma_compress_free(&hand);
+        return rc;
+    }
+ 
+    /* now run the compression */
+    {
+        /* set up the context structure that will be passed to
+		 * stream callbacks */  
+        struct dataStream ds;
+        ds.inData = inData;
+        ds.inLen = inLen;
+        ds.outData = NULL;
+        ds.outLen = 0;
+
+        /* run the streaming compression */ 
+        rc = elzma_compress_run(hand, inputCallback, (void *) &ds,
+                                outputCallback, (void *) &ds);
+        
+        if (rc != ELZMA_E_OK) {
+            if (ds.outData != NULL) free(ds.outData);
+            elzma_compress_free(&hand);
+            return rc;
+        }
+ 
+        *outData = ds.outData;
+        *outLen = ds.outLen;
+    }
+ 
+    return rc;
+}
+</pre>
+
+    <h2>License</h2>
+    <p>All the cruft you find here is public domain.  You don't have to credit
+       anyone to use this code, but my personal request is that you mention
+       Igor Pavlov for his hard, high quality work.</p>
+
+    <h2>Author</h2>
+      <p>Lloyd Hilaiel (lloyd@hilaiel.com)</p>
+
     <div class="footer">
       get the source code on GitHub : <a href="http://github.com/lloyd/easylzma">lloyd/easylzma</a>
     </div>
