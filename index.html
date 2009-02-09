@@ -106,7 +106,7 @@
 
     <h2>Example Programmatic Usage In C</h2>
 
-    <pre>
+    <textarea name="code" class="c">
 /*
  * an example of basic LZMA compression to and from memory buffers
  * using the easylzma library.
@@ -217,7 +217,7 @@ simpleCompress(elzma_file_format format, const unsigned char * inData,
  
     return rc;
 }
-</pre>
+</textarea>
 
     <h2>License</h2>
     <p>All the cruft you find here is public domain.  You don't have to credit
@@ -238,4 +238,11 @@ simpleCompress(elzma_file_format format, const unsigned char * inData,
     
   </div></div>
 </body>
+
+<link type="text/css" rel="stylesheet" href="dp.SyntaxHighlighter/SyntaxHighlighter.css"></link>
+<script language="javascript" src="dp.SyntaxHighlighter/shCore.js"></script>
+<script language="javascript" src="dp.SyntaxHighlighter/shBrushCpp.js"></script>
+<script language="javascript">
+dp.SyntaxHighlighter.HighlightAll('code');
+</script>
 </html>
