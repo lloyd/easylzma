@@ -24,7 +24,7 @@ extern "C" {
 #define ELZMA_LC_DEFAULT 3
 #define ELZMA_LP_DEFAULT 0
 #define ELZMA_PB_DEFAULT 2
-#define ELZMA_DICT_SIZE_DEFAULT (1 << 24)
+#define ELZMA_DICT_SIZE_DEFAULT_MAX (1 << 24)
 
 /** an opaque handle to an lzma compressor */
 typedef struct _elzma_compress_handle * elzma_compress_handle;
@@ -69,6 +69,13 @@ int EASYLZMA_API elzma_compress_run(
     elzma_read_callback inputStream, void * inputContext,
     elzma_write_callback outputStream, void * outputContext);
 
+
+/**
+ * a heuristic utility routine to guess a dictionary size that gets near
+ * optimal compression while reducing memory usage.
+ * accepts a size in bytes, returns a proposed dictionary size
+ */
+unsigned int EASYLZMA_API elzma_get_dict_size(unsigned long long size);
 
 #ifdef __cplusplus
 };

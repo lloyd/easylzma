@@ -51,22 +51,22 @@ openFiles(const char * ifname, FILE ** inFile, const char * ofname,
 "Compress files using the LZMA algorithm (in place by default).\n"\
 "\n"\
 "Usage: elzma [options] [file]\n"\
-"  -1 .. -9         compression level, -1 is fast, -9 is best\n"\
-"  -f, --force      overwrite output files if they exist\n"\
-"  -h, --help       output this message and exit\n"\
-"  -k, --keep       don't delete input files\n"\
-"  --lzip           compress to lzip disk format (.lz extension)\n"\
-"  --lzma           compress to LZMA-Alone disk format (.lzma extension)\n"\
-"  -v, --verbose    output verbose status information while compressing\n"\
-"  -z, --compress   compress files (default when invoking elzma program)\n"\
-"  -d, --decompress decompress files (default when invoking unelzma program)\n"\
+"  -1 .. -9          compression level, -1 is fast, -9 is best\n"\
+"  -f, --force       overwrite output files if they exist\n"\
+"  -h, --help        output this message and exit\n"\
+"  -k, --keep        don't delete input files\n"\
+"  --lzip            compress to lzip disk format (.lz extension)\n"\
+"  --lzma            compress to LZMA-Alone disk format (.lzma extension)\n"\
+"  -v, --verbose     output verbose status information while compressing\n"\
+"  -z, --compress    compress files (default when invoking elzma program)\n"\
+"  -d, --decompress  decompress files (default when invoking unelzma program)\n"\
 "\n"\
 "Advanced Options:\n"\
-"  -s --set-dict    (advanced) specify LZMA dictionary size in bytes\n"
+"  -s --set-max-dict (advanced) specify maximum dictionary size in bytes\n"
 
 /* parse arguments populating output parameters, return nonzero on failure */
 static int parseCompressArgs(int argc, char ** argv, unsigned char * level,
-                             char ** fname, unsigned int * dictSize,
+                             char ** fname, unsigned int * maxDictSize,
                              unsigned int * verbose, unsigned int * keep,
                              unsigned int * overwrite,
                              elzma_file_format * format)
@@ -86,7 +86,7 @@ static int parseCompressArgs(int argc, char ** argv, unsigned char * level,
             {
                 return 1;
             }
-            else if (!strcmp(arg, "s") || !strcmp(arg, "set-dict"))
+            else if (!strcmp(arg, "s") || !strcmp(arg, "set-max-dict"))
             {
                 unsigned int j = 0;
                 val = argv[++i];
@@ -96,7 +96,16 @@ static int parseCompressArgs(int argc, char ** argv, unsigned char * level,
                     if (val[j] < '0' || val[j] > '9') return 1;
                 }
 
-                *dictSize = strtoul(val, (char **) NULL, 10);
+                *maxDictSize = strtoul(val, (char **) NULL, 10);
+                
+                /* don't allow dictionary sizes less than 8k */
+                if (*maxDictSize < (1 < 13)) *maxDictSize = 1 < 13;
+                else {
+                    /* make sure dict size is compatible with lzip,
+                     * this will effectively collapse it to a close power
+                     * of 2 */
+                    *maxDictSize = elzma_get_dict_size(*maxDictSize);
+                }
             }
             else if (!strcmp(arg, "v") || !strcmp(arg, "verbose"))
             {
@@ -176,7 +185,8 @@ doCompress(int argc, char ** argv)
     unsigned char lc = ELZMA_LC_DEFAULT;
     unsigned char lp = ELZMA_LP_DEFAULT;
     unsigned char pb = ELZMA_PB_DEFAULT;
-    unsigned int dictSize = ELZMA_DICT_SIZE_DEFAULT;
+    unsigned int maxDictSize = ELZMA_DICT_SIZE_DEFAULT_MAX;
+    unsigned int dictSize = 0;
     elzma_file_format format = ELZMA_lzma;
     char * ext = ".lzma";
     char * ifname = NULL;
@@ -191,7 +201,7 @@ doCompress(int argc, char ** argv)
     unsigned int overwrite = 0;
 
     if (0 != parseCompressArgs(argc, argv, &level, &ifname,
-                               &dictSize, &verbose, &keep, &overwrite,
+                               &maxDictSize, &verbose, &keep, &overwrite,
                                &format))
     {
         fprintf(stderr, ELZMA_COMPRESS_USAGE);
@@ -225,6 +235,10 @@ doCompress(int argc, char ** argv)
         deleteFile(ofname);
         return 1;
     }
+
+    /* determine a reasonable dictionary size given input size */
+    dictSize = elzma_get_dict_size(uncompressedSize);
+    if (dictSize > maxDictSize) dictSize = maxDictSize;
 
     if (verbose) {
         printf("compressing '%s' to '%s'\n", ifname, ofname);

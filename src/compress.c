@@ -256,3 +256,23 @@ elzma_compress_run(elzma_compress_handle hand,
     
     return ELZMA_E_OK;
 }
+
+unsigned int
+elzma_get_dict_size(unsigned long long size)
+{
+    int i = 13; /* 16k dict is minimum */
+
+    /* now we'll find the closes power of two with a max at 16< *
+     * if the size is greater than 8m, we'll divide by two, all of this
+     * is based on a quick set of emperical tests on hopefully
+     * representative sample data */
+    if ( size > ( 1 << 23 ) ) size >>= 1;
+
+    while (size >> i) i++;
+
+    if (i > 23) return i << 23;
+
+    /* now 1 << i is greater than size, let's return either 1<<i or 1<<(i-1),
+     * whichever is closer to size */
+    return 1 << ((((1 << i) - size) > (size - (1 << (i-1)))) ? i-1 : i);
+}
