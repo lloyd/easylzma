@@ -270,7 +270,7 @@ elzma_get_dict_size(unsigned long long size)
 
     while (size >> i) i++;
 
-    if (i > 23) return i << 23;
+    if (i > 23) return 1 << 23;
 
     /* now 1 << i is greater than size, let's return either 1<<i or 1<<(i-1),
      * whichever is closer to size */

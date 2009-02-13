@@ -1,5 +1,7 @@
 0.0.6
-
+	* lloyd fix regression in 0.0.5 that would cause bogus sizes to
+	        be generated for large input files
+	
 0.0.5
         * lloyd implement heuristic determination of a nice balanced
                 dictionary size providing near optimal compression at
