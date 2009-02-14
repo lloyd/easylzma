@@ -136,6 +136,27 @@ static size_t elzmaWriteFunc(void *p, const void *buf, size_t size)
     return os->outputStream(os->outputContext, buf, size);
 }
 
+/* use Igor's stream hooks for compression. */
+struct elzmaProgressStruct
+{
+    SRes (*Progress)(void *p, UInt64 inSize, UInt64 outSize);
+    long long unsigned int uncompressedSize;
+    elzma_progress_callback progressCallback;
+    void * progressContext;
+
+};
+
+#include <stdio.h>
+static SRes elzmaProgress(void *p, UInt64 inSize, UInt64 outSize)
+{
+    struct elzmaProgressStruct * ps = (struct elzmaProgressStruct *) p;
+    if (ps->progressCallback) {
+        ps->progressCallback(ps->progressContext, inSize,
+                             ps->uncompressedSize);
+    }
+    return SZ_OK;
+}
+
 void elzma_compress_set_allocation_callbacks(
     elzma_compress_handle hand,
     elzma_malloc mallocFunc, void * mallocFuncContext,
@@ -151,10 +172,13 @@ void elzma_compress_set_allocation_callbacks(
 int
 elzma_compress_run(elzma_compress_handle hand,
                    elzma_read_callback inputStream, void * inputContext,
-                   elzma_write_callback outputStream, void * outputContext)
+                   elzma_write_callback outputStream, void * outputContext,
+                   elzma_progress_callback progressCallback,
+                   void * progressContext)
 {
     struct elzmaInStream inStreamStruct;
     struct elzmaOutStream outStreamStruct;    
+    struct elzmaProgressStruct progressStruct;    
 	SRes r;
 
     CrcGenerateTable();
@@ -172,6 +196,11 @@ elzma_compress_run(elzma_compress_handle hand,
     outStreamStruct.WritePtr = elzmaWriteFunc;
     outStreamStruct.outputStream = outputStream;    
     outStreamStruct.outputContext = outputContext;    
+
+    progressStruct.Progress = elzmaProgress;
+    progressStruct.uncompressedSize = hand->uncompressedSize;
+    progressStruct.progressCallback = progressCallback;
+    progressStruct.progressContext = progressContext;
 
     /* create an encoding object */
     hand->encHand = LzmaEnc_Create((ISzAlloc *) &(hand->allocStruct));
@@ -224,7 +253,8 @@ elzma_compress_run(elzma_compress_handle hand,
     /* XXX: expose encoding progress */
     r = LzmaEnc_Encode(hand->encHand,
                        (ISeqOutStream *) &outStreamStruct,
-                       (ISeqInStream *) &inStreamStruct, NULL,
+                       (ISeqInStream *) &inStreamStruct,
+                       (ICompressProgress *) &progressStruct,
                        (ISzAlloc *) &(hand->allocStruct),
                        (ISzAlloc *) &(hand->allocStruct));
 

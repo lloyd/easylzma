@@ -1,4 +1,5 @@
 0.0.7
+	* lloyd Add progress callback during compression
 	
 0.0.6
 	* lloyd fix regression in 0.0.5 that would cause bogus sizes to

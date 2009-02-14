@@ -67,7 +67,8 @@ int EASYLZMA_API elzma_compress_config(elzma_compress_handle hand,
 int EASYLZMA_API elzma_compress_run(
     elzma_compress_handle hand,
     elzma_read_callback inputStream, void * inputContext,
-    elzma_write_callback outputStream, void * outputContext);
+    elzma_write_callback outputStream, void * outputContext,
+    elzma_progress_callback progressCallback, void * progressContext);
 
 
 /**

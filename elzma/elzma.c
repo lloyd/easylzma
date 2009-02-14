@@ -176,6 +176,26 @@ static int elzmaReadFunc(void *ctx, void *buf, size_t *size)
     return 0;
 }
 
+static void printProgressHeader(void)
+{
+    printf("|0%%                            50%%                          100%%|\n");
+}
+
+static void endProgress(int pCtx)
+{
+    while (pCtx++ < 64) { printf("."); }
+    printf("|\n");
+}
+
+static void elzmaProgressFunc(void *ctx, size_t complete, size_t total)
+{
+    int * dots = (int *) ctx;
+    int wantDots = (int) (64 * (double) complete / (double) total);
+    if (*dots == 0) { printf("|"); (*dots)++; }
+    while (wantDots > *dots) { printf("."); (*dots)++; }
+    fflush(stdout);
+}
+
 static int
 doCompress(int argc, char ** argv)
 {
@@ -264,16 +284,28 @@ doCompress(int argc, char ** argv)
         deleteFile(ofname);
         return 1;
     }
-    
-    if (ELZMA_E_OK != elzma_compress_run(
-            hand, elzmaReadFunc, (void *) inFile,
-            elzmaWriteFunc, (void *) outFile))
-    {
-        fprintf(stderr, "error compressing\n");
-        deleteFile(ofname);
-        return 1;
-    }
 
+    {
+        int rv;
+        int pCtx = 0;
+        
+        if (verbose) printProgressHeader();
+    
+        rv = elzma_compress_run(hand, elzmaReadFunc, (void *) inFile,
+                                elzmaWriteFunc, (void *) outFile,
+                                (verbose ? elzmaProgressFunc : NULL), &pCtx);
+
+        if (verbose) endProgress(pCtx);
+
+        
+        if (ELZMA_E_OK != rv)
+        {
+            fprintf(stderr, "error compressing\n");
+            deleteFile(ofname);
+            return 1;
+        }
+    }
+    
     /* clean up */
     elzma_compress_free(&hand);
     fclose(inFile);

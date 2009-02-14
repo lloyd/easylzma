@@ -90,7 +90,8 @@ simpleCompress(elzma_file_format format, const unsigned char * inData,
         ds.outLen = 0;
 
         rc = elzma_compress_run(hand, inputCallback, (void *) &ds,
-                                outputCallback, (void *) &ds);
+                                outputCallback, (void *) &ds,
+                                NULL, NULL);
         
         if (rc != ELZMA_E_OK) {
             if (ds.outData != NULL) free(ds.outData);

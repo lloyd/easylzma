@@ -99,6 +99,15 @@ typedef size_t (*elzma_write_callback)(void *ctx, const void *buf,
 typedef int (*elzma_read_callback)(void *ctx, void *buf,
                                    size_t *size);
 
+/**
+ * A callback invoked during elzma_[de]compress_run to report progress
+ * on the [de]compression.
+ *
+ * \returns the read callback should return nonzero on failure.
+ */
+typedef void (*elzma_progress_callback)(void *ctx, size_t complete,
+                                        size_t total);
+
 
 /** pointer to a malloc function, supporting client overriding memory
  *  allocation routines */
