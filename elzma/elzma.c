@@ -461,24 +461,28 @@ doDecompress(int argc, char ** argv)
 int
 main(int argc, char ** argv)
 {
-#ifdef WIN32    
-    const char * unelzma = "unelzma.exe";
-    const char * elzma = "elzma.exe";
-#else
     const char * unelzma = "unelzma";
+    const char * unelzmaLose = "unelzma.exe";
     const char * elzma = "elzma";    
-#endif
+    const char * elzmaLose = "elzma.exe";    
+
     enum { RM_NONE, RM_COMPRESS, RM_DECOMPRESS } runmode = RM_NONE;
     
     /* first we'll determine the mode we're running in, indicated by
      * the binary name (argv[0]) or by the presence of a flag:
      * one of -z, -d, -compress, --decompress */
-    if (strlen(argv[0]) >= strlen(unelzma) &&
-        !strcmp((argv[0] + strlen(argv[0]) - strlen(unelzma)), unelzma))
+    if ((strlen(argv[0]) >= strlen(unelzma) &&
+         !strcmp((argv[0] + strlen(argv[0]) - strlen(unelzma)), unelzma)) ||
+        (strlen(argv[0]) >= strlen(unelzmaLose) &&
+         !strcmp((argv[0] + strlen(argv[0]) - strlen(unelzmaLose)),
+                 unelzmaLose))) 
     {
         runmode = RM_DECOMPRESS;
-    } else if (strlen(argv[0]) >= strlen(elzma) &&
-               !strcmp((argv[0] + strlen(argv[0]) - strlen(elzma)), elzma))
+    } else if ((strlen(argv[0]) >= strlen(elzma) &&
+                !strcmp((argv[0] + strlen(argv[0]) - strlen(elzma)), elzma)) ||
+               (strlen(argv[0]) >= strlen(elzmaLose) &&
+                !strcmp((argv[0] + strlen(argv[0]) - strlen(elzmaLose)),
+                        elzmaLose)))
     {
         runmode = RM_COMPRESS;
     }
