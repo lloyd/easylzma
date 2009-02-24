@@ -51,7 +51,7 @@ openFiles(const char * ifname, FILE ** inFile, const char * ofname,
 "Compress files using the LZMA algorithm (in place by default).\n"\
 "\n"\
 "Usage: elzma [options] [file]\n"\
-"  -1 .. -9          compression level, -1 is fast, -9 is best\n"\
+"  -1 .. -9          compression level, -1 is fast, -9 is best (default 5)\n"\
 "  -f, --force       overwrite output files if they exist\n"\
 "  -h, --help        output this message and exit\n"\
 "  -k, --keep        don't delete input files\n"\
