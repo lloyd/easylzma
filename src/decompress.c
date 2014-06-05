@@ -31,7 +31,7 @@ struct _elzma_decompress_handle {
 elzma_decompress_handle
 elzma_decompress_alloc()
 {
-    elzma_decompress_handle hand =
+    elzma_decompress_handle hand = (elzma_decompress_handle)
         malloc(sizeof(struct _elzma_decompress_handle));
     memset((void *) hand, 0, sizeof(struct _elzma_decompress_handle));
     init_alloc_struct(&(hand->allocStruct), NULL, NULL, NULL, NULL);
@@ -92,7 +92,7 @@ elzma_decompress_run(elzma_decompress_handle hand,
 
     /* decode the header. */
     {
-        unsigned char * hdr = 
+        unsigned char * hdr = (unsigned char *)
             hand->allocStruct.Alloc(&(hand->allocStruct),
                                     formatHandler.header_size);
 

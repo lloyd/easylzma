@@ -31,7 +31,7 @@ struct _elzma_compress_handle {
 elzma_compress_handle
 elzma_compress_alloc()
 {
-    elzma_compress_handle hand = malloc(sizeof(struct _elzma_compress_handle));
+    elzma_compress_handle hand = (elzma_compress_handle)malloc(sizeof(struct _elzma_compress_handle));
     memset((void *) hand, 0, sizeof(struct _elzma_compress_handle));
 
     /* "reasonable" defaults for props */
@@ -222,7 +222,7 @@ elzma_compress_run(elzma_compress_handle hand,
 
     /* now write the compression header header */ 
     {
-        unsigned char * hdr =
+        unsigned char * hdr = (unsigned char *)
             hand->allocStruct.Alloc(&(hand->allocStruct),
                                     hand->formatHandler.header_size);
         
@@ -265,7 +265,7 @@ elzma_compress_run(elzma_compress_handle hand,
         hand->formatHandler.footer_size > 0)
     {
         size_t wt;
-        unsigned char * ftrBuf = 
+        unsigned char * ftrBuf = (unsigned char *)
             hand->allocStruct.Alloc(&(hand->allocStruct),
                                     hand->formatHandler.footer_size);
         struct elzma_file_footer ftr;
