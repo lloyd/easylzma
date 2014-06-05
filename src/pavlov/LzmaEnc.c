@@ -1,5 +1,5 @@
 /* LzmaEnc.c -- LZMA Encoder
-2008-10-04 : Igor Pavlov : Public domain */
+2011-01-27 : Igor Pavlov : Public domain */
 
 #include <string.h>
 
@@ -13,7 +13,8 @@
 #include "LzmaEnc.h"
 
 #include "LzFind.h"
-#ifdef COMPRESS_MF_MT
+#define _7ZIP_ST
+#ifndef _7ZIP_ST
 #include "LzFindMt.h"
 #endif
 
@@ -46,6 +47,7 @@ void LzmaEncProps_Init(CLzmaEncProps *p)
 {
   p->level = 5;
   p->dictSize = p->mc = 0;
+  p->reduceSize = (UInt32)(Int32)-1;
   p->lc = p->lp = p->pb = p->algo = p->fb = p->btMode = p->numHashBytes = p->numThreads = -1;
   p->writeEndMark = 0;
 }
@@ -56,6 +58,15 @@ void LzmaEncProps_Normalize(CLzmaEncProps *p)
   if (level < 0) level = 5;
   p->level = level;
   if (p->dictSize == 0) p->dictSize = (level <= 5 ? (1 << (level * 2 + 14)) : (level == 6 ? (1 << 25) : (1 << 26)));
+  if (p->dictSize > p->reduceSize)
+  {
+    unsigned i;
+    for (i = 15; i <= 30; i++)
+    {
+      if (p->reduceSize <= ((UInt32)2 << i)) { p->dictSize = ((UInt32)2 << i); break; }
+      if (p->reduceSize <= ((UInt32)3 << i)) { p->dictSize = ((UInt32)3 << i); break; }
+    }
+  }
   if (p->lc < 0) p->lc = 3;
   if (p->lp < 0) p->lp = 0;
   if (p->pb < 0) p->pb = 2;
@@ -64,7 +75,13 @@ void LzmaEncProps_Normalize(CLzmaEncProps *p)
   if (p->btMode < 0) p->btMode = (p->algo == 0 ? 0 : 1);
   if (p->numHashBytes < 0) p->numHashBytes = 4;
   if (p->mc == 0)  p->mc = (16 + (p->fb >> 1)) >> (p->btMode ? 0 : 1);
-  if (p->numThreads < 0) p->numThreads = ((p->btMode && p->algo) ? 2 : 1);
+  if (p->numThreads < 0)
+    p->numThreads =
+      #ifndef _7ZIP_ST
+      ((p->btMode && p->algo) ? 2 : 1);
+      #else
+      1;
+      #endif
 }
 
 UInt32 LzmaEncProps_GetDictSize(const CLzmaEncProps *props2)
@@ -103,7 +120,7 @@ void LzmaEnc_FastPosInit(Byte *g_FastPos)
   int c = 2, slotFast;
   g_FastPos[0] = 0;
   g_FastPos[1] = 1;
-  
+
   for (slotFast = 2; slotFast < kNumLogBits * 2; slotFast++)
   {
     UInt32 k = (1 << ((slotFast >> 1) - 1));
@@ -133,7 +150,7 @@ void LzmaEnc_FastPosInit(Byte *g_FastPos)
 
 typedef unsigned CState;
 
-typedef struct _COptimal
+typedef struct
 {
   UInt32 price;
 
@@ -166,7 +183,7 @@ typedef struct _COptimal
 #define kEndPosModelIndex 14
 #define kNumPosModels (kEndPosModelIndex - kStartPosModelIndex)
 
-#define kNumFullDistances (1 << (kEndPosModelIndex / 2))
+#define kNumFullDistances (1 << (kEndPosModelIndex >> 1))
 
 #ifdef _LZMA_PROB32
 #define CLzmaProb UInt32
@@ -212,7 +229,7 @@ typedef struct
   UInt32 counters[LZMA_NUM_PB_STATES_MAX];
 } CLenPriceEnc;
 
-typedef struct _CRangeEnc
+typedef struct
 {
   UInt32 range;
   Byte cache;
@@ -225,26 +242,6 @@ typedef struct _CRangeEnc
   UInt64 processed;
   SRes res;
 } CRangeEnc;
-
-typedef struct _CSeqInStreamBuf
-{
-  ISeqInStream funcTable;
-  const Byte *data;
-  SizeT rem;
-} CSeqInStreamBuf;
-
-static SRes MyRead(void *pp, void *data, size_t *size)
-{
-  size_t curSize = *size;
-  CSeqInStreamBuf *p = (CSeqInStreamBuf *)pp;
-  if (p->rem < curSize)
-    curSize = p->rem;
-  memcpy(data, p->data, curSize);
-  p->rem -= curSize;
-  p->data += curSize;
-  *size = curSize;
-  return SZ_OK;
-}
 
 typedef struct
 {
@@ -260,7 +257,7 @@ typedef struct
   CLzmaProb posSlotEncoder[kNumLenToPosStates][1 << kNumPosSlotBits];
   CLzmaProb posEncoders[kNumFullDistances - kEndPosModelIndex];
   CLzmaProb posAlignEncoder[1 << kNumAlignBits];
-  
+
   CLenPriceEnc lenEnc;
   CLenPriceEnc repLenEnc;
 
@@ -268,22 +265,22 @@ typedef struct
   UInt32 state;
 } CSaveState;
 
-typedef struct _CLzmaEnc
+typedef struct
 {
   IMatchFinder matchFinder;
   void *matchFinderObj;
 
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   Bool mtMode;
   CMatchFinderMt matchFinderMt;
   #endif
 
   CMatchFinder matchFinderBase;
 
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   Byte pad[128];
   #endif
-  
+
   UInt32 optimumEndIndex;
   UInt32 optimumCurrentIndex;
 
@@ -291,7 +288,7 @@ typedef struct _CLzmaEnc
   UInt32 numPairs;
   UInt32 numAvail;
   COptimal opt[kNumOpts];
-  
+
   #ifndef LZMA_LOG_BSR
   Byte g_FastPos[1 << kNumLogBits];
   #endif
@@ -325,14 +322,14 @@ typedef struct _CLzmaEnc
   CLzmaProb posSlotEncoder[kNumLenToPosStates][1 << kNumPosSlotBits];
   CLzmaProb posEncoders[kNumFullDistances - kEndPosModelIndex];
   CLzmaProb posAlignEncoder[1 << kNumAlignBits];
-  
+
   CLenPriceEnc lenEnc;
   CLenPriceEnc repLenEnc;
 
   unsigned lclp;
 
   Bool fastMode;
-  
+
   CRangeEnc rc;
 
   Bool writeEndMark;
@@ -343,10 +340,8 @@ typedef struct _CLzmaEnc
 
   SRes result;
   UInt32 dictSize;
-  UInt32 matchFinderCycles;
 
-  ISeqInStream *inStream;
-  CSeqInStreamBuf seqBufInStream;
+  int needInit;
 
   CSaveState saveState;
 } CLzmaEnc;
@@ -410,10 +405,9 @@ SRes LzmaEnc_SetProps(CLzmaEncHandle pp, const CLzmaEncProps *props2)
   LzmaEncProps_Normalize(&props);
 
   if (props.lc > LZMA_LC_MAX || props.lp > LZMA_LP_MAX || props.pb > LZMA_PB_MAX ||
-      props.dictSize > (1 << kDicLogSizeMaxCompress) || props.dictSize > (1 << 30))
+      props.dictSize > ((UInt32)1 << kDicLogSizeMaxCompress) || props.dictSize > ((UInt32)1 << 30))
     return SZ_ERROR_PARAM;
   p->dictSize = props.dictSize;
-  p->matchFinderCycles = props.mc;
   {
     unsigned fb = props.fb;
     if (fb < 5)
@@ -443,7 +437,7 @@ SRes LzmaEnc_SetProps(CLzmaEncHandle pp, const CLzmaEncProps *props2)
 
   p->writeEndMark = props.writeEndMark;
 
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   /*
   if (newMultiThread != _multiThread)
   {
@@ -924,10 +918,10 @@ static UInt32 Backward(CLzmaEnc *p, UInt32 *backRes, UInt32 cur)
     {
       UInt32 posPrev = posMem;
       UInt32 backCur = backMem;
-      
+
       backMem = p->opt[posPrev].backPrev;
       posMem = p->opt[posPrev].posPrev;
-      
+
       p->opt[posPrev].backPrev = backCur;
       p->opt[posPrev].posPrev = cur;
       cur = posPrev;
@@ -958,7 +952,7 @@ static UInt32 GetOptimum(CLzmaEnc *p, UInt32 position, UInt32 *backRes)
     return lenRes;
   }
   p->optimumCurrentIndex = p->optimumEndIndex = 0;
-  
+
   if (p->additionalOffset == 0)
     mainLen = ReadMatchDistances(p, &numPairs);
   else
@@ -1256,7 +1250,7 @@ static UInt32 GetOptimum(CLzmaEnc *p, UInt32 position, UInt32 *backRes)
 
     matchPrice = curPrice + GET_PRICE_1(p->isMatch[state][posState]);
     repMatchPrice = matchPrice + GET_PRICE_1(p->isRep[state]);
-    
+
     if (matchByte == curByte && !(nextOpt->posPrev < cur && nextOpt->backPrev == 0))
     {
       UInt32 shortRepPrice = repMatchPrice + GetRepLen1Price(p, state, posState);
@@ -1318,7 +1312,7 @@ static UInt32 GetOptimum(CLzmaEnc *p, UInt32 position, UInt32 *backRes)
         }
       }
     }
-    
+
     startLen = 2; /* speed optimization */
     {
     UInt32 repIndex;
@@ -1349,10 +1343,10 @@ static UInt32 GetOptimum(CLzmaEnc *p, UInt32 position, UInt32 *backRes)
       }
       while (--lenTest >= 2);
       lenTest = lenTestTemp;
-      
+
       if (repIndex == 0)
         startLen = lenTest + 1;
-        
+
       /* if (_maxMode) */
         {
           UInt32 lenTest2 = lenTest + 1;
@@ -1376,7 +1370,7 @@ static UInt32 GetOptimum(CLzmaEnc *p, UInt32 position, UInt32 *backRes)
             nextRepMatchPrice = curAndLenCharPrice +
                 GET_PRICE_1(p->isMatch[state2][posStateNext]) +
                 GET_PRICE_1(p->isRep[state2]);
-            
+
             /* for (; lenTest2 >= 2; lenTest2--) */
             {
               UInt32 curAndLenPrice;
@@ -1431,7 +1425,7 @@ static UInt32 GetOptimum(CLzmaEnc *p, UInt32 position, UInt32 *backRes)
           curAndLenPrice += p->distancesPrices[lenToPosState][curBack];
         else
           curAndLenPrice += p->posSlotPrices[lenToPosState][posSlot] + p->alignPrices[curBack & kAlignMask];
-        
+
         opt = &p->opt[cur + lenTest];
         if (curAndLenPrice < opt->price)
         {
@@ -1465,7 +1459,7 @@ static UInt32 GetOptimum(CLzmaEnc *p, UInt32 position, UInt32 *backRes)
             nextRepMatchPrice = curAndLenCharPrice +
                 GET_PRICE_1(p->isMatch[state2][posStateNext]) +
                 GET_PRICE_1(p->isRep[state2]);
-            
+
             /* for (; lenTest2 >= 2; lenTest2--) */
             {
               UInt32 offset = cur + lenTest + 1 + lenTest2;
@@ -1577,7 +1571,7 @@ static UInt32 GetOptimumFast(CLzmaEnc *p, UInt32 *backRes)
     MovePos(p, repLen - 1);
     return repLen;
   }
-  
+
   if (mainLen < 2 || numAvail <= 2)
     return 1;
 
@@ -1591,7 +1585,7 @@ static UInt32 GetOptimumFast(CLzmaEnc *p, UInt32 *backRes)
         (p->longestMatchLength + 1 >= mainLen && mainLen >= 3 && ChangePair(newDistance, mainDist)))
       return 1;
   }
-  
+
   data = p->matchFinder.GetPointerToCurrentPos(p->matchFinderObj) - 1;
   for (i = 0; i < LZMA_NUM_REPS; i++)
   {
@@ -1692,7 +1686,7 @@ void LzmaEnc_Construct(CLzmaEnc *p)
 {
   RangeEnc_Construct(&p->rc);
   MatchFinder_Construct(&p->matchFinderBase);
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   MatchFinderMt_Construct(&p->matchFinderMt);
   p->matchFinderMt.MatchFinder = &p->matchFinderBase;
   #endif
@@ -1731,7 +1725,7 @@ void LzmaEnc_FreeLits(CLzmaEnc *p, ISzAlloc *alloc)
 
 void LzmaEnc_Destruct(CLzmaEnc *p, ISzAlloc *alloc, ISzAlloc *allocBig)
 {
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   MatchFinderMt_Destruct(&p->matchFinderMt, allocBig);
   #endif
   MatchFinder_Free(&p->matchFinderBase, allocBig);
@@ -1748,11 +1742,10 @@ void LzmaEnc_Destroy(CLzmaEncHandle p, ISzAlloc *alloc, ISzAlloc *allocBig)
 static SRes LzmaEnc_CodeOneBlock(CLzmaEnc *p, Bool useLimits, UInt32 maxPackSize, UInt32 maxUnpackSize)
 {
   UInt32 nowPos32, startPos32;
-  if (p->inStream != 0)
+  if (p->needInit)
   {
-    p->matchFinderBase.stream = p->inStream;
     p->matchFinder.Init(p->matchFinderObj);
-    p->inStream = 0;
+    p->needInit = 0;
   }
 
   if (p->finished)
@@ -1853,7 +1846,7 @@ static SRes LzmaEnc_CodeOneBlock(CLzmaEnc *p, Bool useLimits, UInt32 maxPackSize
         pos -= LZMA_NUM_REPS;
         GetPosSlot(pos, posSlot);
         RcTree_Encode(&p->rc, p->posSlotEncoder[GetLenToPosState(len)], kNumPosSlotBits, posSlot);
-        
+
         if (posSlot >= kStartPosModelIndex)
         {
           UInt32 footerBits = ((posSlot >> 1) - 1);
@@ -1917,7 +1910,7 @@ static SRes LzmaEnc_Alloc(CLzmaEnc *p, UInt32 keepWindowSize, ISzAlloc *alloc, I
   if (!RangeEnc_Alloc(&p->rc, alloc))
     return SZ_ERROR_MEM;
   btMode = (p->matchFinderBase.btMode != 0);
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   p->mtMode = (p->multiThread && !p->fastMode && btMode);
   #endif
 
@@ -1942,7 +1935,7 @@ static SRes LzmaEnc_Alloc(CLzmaEnc *p, UInt32 keepWindowSize, ISzAlloc *alloc, I
   if (beforeSize + p->dictSize < keepWindowSize)
     beforeSize = keepWindowSize - p->dictSize;
 
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   if (p->mtMode)
   {
     RINOK(MatchFinderMt_Create(&p->matchFinderMt, p->dictSize, beforeSize, p->numFastBytes, LZMA_MATCH_LEN_MAX, allocBig));
@@ -2050,11 +2043,12 @@ static SRes LzmaEnc_AllocAndInit(CLzmaEnc *p, UInt32 keepWindowSize, ISzAlloc *a
   return SZ_OK;
 }
 
-static SRes LzmaEnc_Prepare(CLzmaEncHandle pp, ISeqInStream *inStream, ISeqOutStream *outStream,
+static SRes LzmaEnc_Prepare(CLzmaEncHandle pp, ISeqOutStream *outStream, ISeqInStream *inStream,
     ISzAlloc *alloc, ISzAlloc *allocBig)
 {
   CLzmaEnc *p = (CLzmaEnc *)pp;
-  p->inStream = inStream;
+  p->matchFinderBase.stream = inStream;
+  p->needInit = 1;
   p->rc.outStream = outStream;
   return LzmaEnc_AllocAndInit(p, 0, alloc, allocBig);
 }
@@ -2064,15 +2058,16 @@ SRes LzmaEnc_PrepareForLzma2(CLzmaEncHandle pp,
     ISzAlloc *alloc, ISzAlloc *allocBig)
 {
   CLzmaEnc *p = (CLzmaEnc *)pp;
-  p->inStream = inStream;
+  p->matchFinderBase.stream = inStream;
+  p->needInit = 1;
   return LzmaEnc_AllocAndInit(p, keepWindowSize, alloc, allocBig);
 }
 
 static void LzmaEnc_SetInputBuf(CLzmaEnc *p, const Byte *src, SizeT srcLen)
 {
-  p->seqBufInStream.funcTable.Read = MyRead;
-  p->seqBufInStream.data = src;
-  p->seqBufInStream.rem = srcLen;
+  p->matchFinderBase.directInput = 1;
+  p->matchFinderBase.bufferBase = (Byte *)src;
+  p->matchFinderBase.directInputRem = srcLen;
 }
 
 SRes LzmaEnc_MemPrepare(CLzmaEncHandle pp, const Byte *src, SizeT srcLen,
@@ -2080,13 +2075,14 @@ SRes LzmaEnc_MemPrepare(CLzmaEncHandle pp, const Byte *src, SizeT srcLen,
 {
   CLzmaEnc *p = (CLzmaEnc *)pp;
   LzmaEnc_SetInputBuf(p, src, srcLen);
-  p->inStream = &p->seqBufInStream.funcTable;
+  p->needInit = 1;
+
   return LzmaEnc_AllocAndInit(p, keepWindowSize, alloc, allocBig);
 }
 
 void LzmaEnc_Finish(CLzmaEncHandle pp)
 {
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   CLzmaEnc *p = (CLzmaEnc *)pp;
   if (p->mtMode)
     MatchFinderMt_ReleaseStream(&p->matchFinderMt);
@@ -2095,7 +2091,7 @@ void LzmaEnc_Finish(CLzmaEncHandle pp)
   #endif
 }
 
-typedef struct _CSeqOutStreamBuf
+typedef struct
 {
   ISeqOutStream funcTable;
   Byte *data;
@@ -2155,7 +2151,7 @@ SRes LzmaEnc_CodeOneMemBlock(CLzmaEncHandle pp, Bool reInit,
   p->rc.outStream = &outStream.funcTable;
 
   res = LzmaEnc_CodeOneBlock(p, True, desiredPackSize, *unpackSize);
-  
+
   *unpackSize = (UInt32)(p->nowPos64 - nowPos64);
   *destLen -= outStream.rem;
   if (outStream.overflow)
@@ -2164,20 +2160,16 @@ SRes LzmaEnc_CodeOneMemBlock(CLzmaEncHandle pp, Bool reInit,
   return res;
 }
 
-SRes LzmaEnc_Encode(CLzmaEncHandle pp, ISeqOutStream *outStream, ISeqInStream *inStream, ICompressProgress *progress,
-    ISzAlloc *alloc, ISzAlloc *allocBig)
+static SRes LzmaEnc_Encode2(CLzmaEnc *p, ICompressProgress *progress)
 {
-  CLzmaEnc *p = (CLzmaEnc *)pp;
   SRes res = SZ_OK;
 
-  #ifdef COMPRESS_MF_MT
+  #ifndef _7ZIP_ST
   Byte allocaDummy[0x300];
   int i = 0;
   for (i = 0; i < 16; i++)
     allocaDummy[i] = (Byte)i;
   #endif
-
-  RINOK(LzmaEnc_Prepare(pp, inStream, outStream, alloc, allocBig));
 
   for (;;)
   {
@@ -2194,8 +2186,15 @@ SRes LzmaEnc_Encode(CLzmaEncHandle pp, ISeqOutStream *outStream, ISeqInStream *i
       }
     }
   }
-  LzmaEnc_Finish(pp);
+  LzmaEnc_Finish(p);
   return res;
+}
+
+SRes LzmaEnc_Encode(CLzmaEncHandle pp, ISeqOutStream *outStream, ISeqInStream *inStream, ICompressProgress *progress,
+    ISzAlloc *alloc, ISzAlloc *allocBig)
+{
+  RINOK(LzmaEnc_Prepare(pp, outStream, inStream, alloc, allocBig));
+  return LzmaEnc_Encode2((CLzmaEnc *)pp, progress);
 }
 
 SRes LzmaEnc_WriteProperties(CLzmaEncHandle pp, Byte *props, SizeT *size)
@@ -2243,8 +2242,11 @@ SRes LzmaEnc_MemEncode(CLzmaEncHandle pp, Byte *dest, SizeT *destLen, const Byte
   outStream.overflow = False;
 
   p->writeEndMark = writeEndMark;
-  res = LzmaEnc_Encode(pp, &outStream.funcTable, &p->seqBufInStream.funcTable,
-      progress, alloc, allocBig);
+
+  p->rc.outStream = &outStream.funcTable;
+  res = LzmaEnc_MemPrepare(pp, src, srcLen, 0, alloc, allocBig);
+  if (res == SZ_OK)
+    res = LzmaEnc_Encode2(p, progress);
 
   *destLen -= outStream.rem;
   if (outStream.overflow)
