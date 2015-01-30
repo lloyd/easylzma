@@ -66,6 +66,8 @@ elzma_compress_free(elzma_compress_handle * hand)
                             (ISzAlloc *) &((*hand)->allocStruct),
                             (ISzAlloc *) &((*hand)->allocStruct));
         }
+
+	free(*hand);	
         
     }
     *hand = NULL;
