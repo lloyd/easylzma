@@ -161,6 +161,8 @@ static int roundTripTest(elzma_file_format format)
         free(decompressed);
         return 1;
     }
+     
+    free(decompressed);
     
     return ELZMA_E_OK;
 }
