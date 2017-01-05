@@ -153,16 +153,20 @@ static int roundTripTest(elzma_file_format format)
 
     free(compressed);
 
-    if (rc != ELZMA_E_OK) return rc;
-    
-    if (sz != strlen(sampleData) ||
-        0 != memcmp(decompressed, sampleData, sz))
-    {
-        free(decompressed);
-        return 1;
+    if (rc != ELZMA_E_OK) {
+        if (sz != strlen(sampleData) ||
+            0 != memcmp(decompressed, sampleData, sz))
+        {
+            rc = 1;
+        } else {
+            rc = ELZMA_E_OK;
+        }
     }
-    
-    return ELZMA_E_OK;
+
+    if (decompressed != NULL) {
+        free(decompressed);
+    }
+    return rc;
 }
 
 /* "correct" lzip generated from the lzip program */

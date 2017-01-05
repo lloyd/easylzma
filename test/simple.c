@@ -99,6 +99,7 @@ simpleCompress(elzma_file_format format, const unsigned char * inData,
             return rc;
         }
 
+        elzma_compress_free(&hand);
         *outData = ds.outData;
         *outLen = ds.outLen;
     }
@@ -132,7 +133,8 @@ simpleDecompress(elzma_file_format format, const unsigned char * inData,
             elzma_decompress_free(&hand);
             return rc;
         }
-        
+
+        elzma_decompress_free(&hand);
         *outData = ds.outData;
         *outLen = ds.outLen;
     }
